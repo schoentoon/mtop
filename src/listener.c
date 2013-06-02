@@ -44,6 +44,10 @@ struct listener* new_listener(char* input) {
   } else if (sscanf(input, "%hd", &port) == 1) {
     output->address->sin_family = AF_INET;
     output->address->sin_port = htons(port);
+  } else {
+    free(output->address);
+    free(output);
+    return NULL;
   }
   return output;
 };
