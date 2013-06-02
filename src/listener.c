@@ -20,6 +20,7 @@
 #include "debug.h"
 
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <event2/bufferevent.h>
@@ -62,7 +63,7 @@ int initListener(struct event_base* base, struct listener* listener) {
   if (!listener->listener) {
     char ipbuf[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &listener->address->sin_addr, ipbuf, sizeof(ipbuf));
-    fprintf(stderr, "Error could not start listener %s:%d.\n", ipbuf, ntohs(listener->address->sin_port));
+    fprintf(stderr, "Error '%s' on %s:%d.\n", evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), ipbuf, ntohs(listener->address->sin_port));
     return 1;
   }
   return 0;
