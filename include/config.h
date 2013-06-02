@@ -23,6 +23,7 @@
 
 #include <event2/event.h>
 #include <event2/listener.h>
+#include <event2/bufferevent.h>
 
 struct config {
   struct listener* listeners;
@@ -32,5 +33,7 @@ struct config {
 int parse_config(char* config_file);
 
 int dispatch_config(struct event_base* event_base);
+
+int send_loaded_modules_info(struct bufferevent* bev);
 
 #endif //_CONFIG_H

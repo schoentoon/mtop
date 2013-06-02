@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <event2/bufferevent.h>
+
 static struct config* config = NULL;
 
 int parse_config(char* config_file) {
@@ -84,4 +86,17 @@ int dispatch_config(struct event_base* event_base) {
     }
   }
   return 0;
+};
+
+int send_loaded_modules_info(struct bufferevent* bev) {
+  bufferevent_write(bev, "MODULES ", 9);
+  struct module* m = config->modules;
+  int i = 0;
+  while (m) {
+    i++;
+    bufferevent_write(bev, m->name, strlen(m->name) + 1);
+    m = m->next;
+  }
+  bufferevent_write(bev, "\n", 2);
+  return i;
 };
