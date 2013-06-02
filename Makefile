@@ -5,7 +5,7 @@ LFLAGS := -levent -ldl -Wl,--export-dynamic
 CC     := gcc
 BINARY := mtop
 MODULES:= modules/sample.so
-DEPS   := build/main.o build/debug.o build/config.o build/listener.o build/module.o
+DEPS   := build/main.o build/debug.o build/config.o build/listener.o build/module.o build/client.o
 
 .PHONY: all clean
 
@@ -28,6 +28,9 @@ build/listener.o: src/listener.c include/listener.h
 
 build/module.o: src/module.c include/module.h
 	$(CC) $(CFLAGS) $(INC) -c -o build/module.o src/module.c
+
+build/client.o: src/client.c include/client.h
+	$(CC) $(CFLAGS) $(INC) -c -o build/client.o src/client.c
 
 modules/sample.so: modules/src/sample.c
 	$(CC) $(CFLAGS) $(MFLAGS) $(DEFINES) $(INC) -o modules/sample.so modules/src/sample.c

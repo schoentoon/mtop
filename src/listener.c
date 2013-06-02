@@ -18,6 +18,7 @@
 #include "listener.h"
 
 #include "debug.h"
+#include "client.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -77,6 +78,8 @@ static void listener_callback(struct evconnlistener* listener, evutil_socket_t f
     event_base_loopbreak(base);
     return;
   }
+  struct client* client = new_client();
+  bufferevent_setcb(bev, client_readcb, NULL, client_eventcb, client);
   bufferevent_enable(bev, EV_READ);
   bufferevent_write(bev, "test", 5);
 };
