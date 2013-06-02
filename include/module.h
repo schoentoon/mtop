@@ -15,22 +15,17 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CONFIG_H
-#define _CONFIG_H
+#ifndef _MODULE_H
+#define _MODULE_H
 
-#include "module.h"
-#include "listener.h"
-
-#include <event2/event.h>
-#include <event2/listener.h>
-
-struct config {
-  struct listener* listeners;
-  struct module* modules;
+struct module {
+  void* handle;
+  char* name;
+  struct module* next;
 };
 
-int parse_config(char* config_file);
+typedef char* mod_name_function();
 
-int dispatch_config(struct event_base* event_base);
+struct module* new_module(char* filename);
 
-#endif //_CONFIG_H
+#endif //_MODULE_H

@@ -1,13 +1,15 @@
 CFLAGS := $(CFLAGS) -Wall -O2 -mtune=native -g
+MFLAGS := -shared -fPIC
 INC    := -Iinclude $(INC)
-LFLAGS := -levent
+LFLAGS := -levent -ldl -Wl,--export-dynamic
 CC     := gcc
 BINARY := mtop
-DEPS   := build/main.o build/debug.o build/config.o build/listener.o
+MODULES:= modules/sample.so
+DEPS   := build/main.o build/debug.o build/config.o build/listener.o build/module.o
 
 .PHONY: all clean
 
-all: build $(DEPS) bin/$(BINARY)
+all: build $(DEPS) bin/$(BINARY) $(MODULES)
 
 build:
 	-mkdir -p build bin
@@ -23,6 +25,12 @@ build/config.o: src/config.c include/config.h
 
 build/listener.o: src/listener.c include/listener.h
 	$(CC) $(CFLAGS) $(INC) -c -o build/listener.o src/listener.c
+
+build/module.o: src/module.c include/module.h
+	$(CC) $(CFLAGS) $(INC) -c -o build/module.o src/module.c
+
+modules/sample.so: modules/src/sample.c
+	$(CC) $(CFLAGS) $(MFLAGS) $(DEFINES) $(INC) -o modules/sample.so modules/src/sample.c
 
 bin/$(BINARY): $(DEPS)
 	$(CC) $(CFLAGS) $(INC) -o bin/$(BINARY) $(DEPS) $(LFLAGS)

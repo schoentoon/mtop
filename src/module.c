@@ -15,22 +15,27 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CONFIG_H
-#define _CONFIG_H
-
 #include "module.h"
-#include "listener.h"
 
-#include <event2/event.h>
-#include <event2/listener.h>
+#include <stdio.h>
+#include <dlfcn.h>
+#include <stdlib.h>
+#include <string.h>
 
-struct config {
-  struct listener* listeners;
-  struct module* modules;
+struct module* new_module(char* filename) {
+  void* handle = dlopen(filename, RTLD_LAZY);
+  if (!handle) {
+    fprintf(stderr, "%s\n", dlerror());
+    return NULL;
+  }
+  mod_name_function* name = dlsym(handle, "getName");
+  if (!name) {
+    fprintf(stderr, "%s\n", dlerror());
+    return NULL;
+  }
+  struct module* module = malloc(sizeof(struct module));
+  memset(module, 0, sizeof(struct module));
+  module->handle = handle;
+  module->name = strdup(name());
+  return module;
 };
-
-int parse_config(char* config_file);
-
-int dispatch_config(struct event_base* event_base);
-
-#endif //_CONFIG_H

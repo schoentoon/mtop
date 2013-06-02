@@ -53,6 +53,18 @@ int parse_config(char* config_file) {
             ll->next = l;
           }
         }
+      } else if (strcmp(key, "module") == 0) {
+        struct module* m = new_module(value);
+        if (m) {
+          if (!config->modules)
+            config->modules = m;
+          else {
+            struct module* mm = config->modules;
+            while (mm->next)
+              mm = mm->next;
+            mm->next = m;
+          }
+        }
       }
     } else {
       fprintf(stderr, "Error on line %zd\tCould not be parsed correctly.\n", line_count);

@@ -15,22 +15,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CONFIG_H
-#define _CONFIG_H
-
 #include "module.h"
-#include "listener.h"
 
-#include <event2/event.h>
-#include <event2/listener.h>
-
-struct config {
-  struct listener* listeners;
-  struct module* modules;
-};
-
-int parse_config(char* config_file);
-
-int dispatch_config(struct event_base* event_base);
-
-#endif //_CONFIG_H
+char* getName() {
+  return "sample";
+}
