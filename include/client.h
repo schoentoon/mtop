@@ -29,8 +29,8 @@ struct client {
 
 struct client* new_client();
 
-void client_readcb(struct bufferevent* bev, struct client* context);
+void client_readcb(struct bufferevent* bev, void* context);
 
-void client_eventcb(struct bufferevent* bev, short events, struct client* context);
+void client_eventcb(struct bufferevent* bev, short events, void* context);
 
 #endif //_CLIENT_H

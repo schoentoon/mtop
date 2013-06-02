@@ -27,7 +27,7 @@ struct client* new_client() {
   return malloc(sizeof(struct client));
 };
 
-void client_readcb(struct bufferevent* bev, struct client* client) {
+void client_readcb(struct bufferevent* bev, void* context) {
   struct evbuffer* input = bufferevent_get_input(bev);
   size_t len;
   char* line = evbuffer_readln(input, &len, EVBUFFER_EOL_ANY);
@@ -38,8 +38,9 @@ void client_readcb(struct bufferevent* bev, struct client* client) {
   };
 };
 
-void client_eventcb(struct bufferevent* bev, short events, struct client* client) {
+void client_eventcb(struct bufferevent* bev, short events, void* context) {
   if (!(events & BEV_EVENT_CONNECTED)) {
+    struct client* client = context;
     free(client);
   }
 };
