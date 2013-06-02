@@ -16,6 +16,7 @@
  */
 
 #include "debug.h"
+#include "listener.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -28,6 +29,7 @@
 static const struct option options[] = {
   { "help",         no_argument,       0, 'h' },
   { "debug",        optional_argument, 0, 'D' },
+  { "config",       required_argument, 0, 'C' },
   { 0, 0, 0, 0 }
 };
 
@@ -41,6 +43,7 @@ void onSignal(int signal) {
 int usage(char* program) {
   fprintf(stderr, "USAGE: %s [options]\n", program);
   fprintf(stderr, "-h, --help\tShow this help message.\n");
+  fprintf(stderr, "-C, --config\tUse this config file.\n");
   fprintf(stderr, "-D, --debug\tIncrease the debug level\n");
   fprintf(stderr, "           \tYou can also directly set a certain debug level with -D5 where 5 is the debug level.\n");
   return 0;
@@ -48,7 +51,7 @@ int usage(char* program) {
 
 int main(int argc, char** argv) {
   int arg, optindex;
-  while ((arg = getopt_long(argc, argv, "hD::", options, &optindex)) != -1) {
+  while ((arg = getopt_long(argc, argv, "hD::C:", options, &optindex)) != -1) {
     switch (arg) {
     case 'h':
       return usage(argv[0]);
@@ -64,11 +67,21 @@ int main(int argc, char** argv) {
         }
       } else
         debug++;
+      break;
+    case 'C': {
+      int result = parse_config(optarg);
+      if (result)
+        return result;
+      break;
+    }
     }
   }
   event_base = event_base_new();
+  if (dispatch_config(event_base))
+    return 1;
   signal(SIGTERM, onSignal);
   signal(SIGINT, onSignal);
-  event_base_dispatch(event_base);
+  for (;;)
+    event_base_dispatch(event_base);
   return 0;
 };

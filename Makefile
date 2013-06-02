@@ -3,7 +3,7 @@ INC    := -Iinclude $(INC)
 LFLAGS := -levent
 CC     := gcc
 BINARY := mtop
-DEPS   := build/main.o build/debug.o
+DEPS   := build/main.o build/debug.o build/config.o build/listener.o
 
 .PHONY: all clean
 
@@ -17,6 +17,12 @@ build/main.o: src/main.c
 
 build/debug.o: src/debug.c include/debug.h
 	$(CC) $(CFLAGS) $(INC) -c -o build/debug.o src/debug.c
+
+build/config.o: src/config.c include/config.h
+	$(CC) $(CFLAGS) $(INC) -c -o build/config.o src/config.c
+
+build/listener.o: src/listener.c include/listener.h
+	$(CC) $(CFLAGS) $(INC) -c -o build/listener.o src/listener.c
 
 bin/$(BINARY): $(DEPS)
 	$(CC) $(CFLAGS) $(INC) -o bin/$(BINARY) $(DEPS) $(LFLAGS)
