@@ -47,18 +47,26 @@ void client_readcb(struct bufferevent* bev, void* context) {
         em->module = module;
         em->id = 0;
         em->next = NULL;
-        if (!client->mods)
+        if (!client->mods) {
           client->mods = em;
-        else {
+          evbuffer_add_printf(output, "LOADED %s WITH ID %d\n", buf, em->id);
+        } else {
           em->id++;
           struct enabled_mod* lm = client->mods;
-          while (lm->next) {
+          do {
+            if (lm->module == em->module) {
+              evbuffer_add_printf(output, "ALREADY LOADED %s WITH ID %d\n", em->module->name, em->id);
+              lm = NULL;
+              break;
+            }
             em->id++;
             lm = lm->next;
-          };
-          lm->next = em;
+          } while (lm);
+          if (lm) {
+            lm->next = em;
+            evbuffer_add_printf(output, "LOADED %s WITH ID %d\n", buf, em->id);
+          }
         }
-        evbuffer_add_printf(output, "LOADED %s WITH ID %d\n", buf, em->id);
       } else
         evbuffer_add_printf(output, "UNABLE TO LOAD %s\n", buf);
     }
