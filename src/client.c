@@ -18,7 +18,9 @@
 #include "client.h"
 
 #include "debug.h"
+#include "config.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <event2/buffer.h>
@@ -28,11 +30,36 @@ struct client* new_client() {
 };
 
 void client_readcb(struct bufferevent* bev, void* context) {
+  struct client* client = context;
   struct evbuffer* input = bufferevent_get_input(bev);
+  struct evbuffer* output = bufferevent_get_output(bev);
   size_t len;
   char* line = evbuffer_readln(input, &len, EVBUFFER_EOL_ANY);
   while (line) {
     DEBUG(255, "Raw line: %s", line);
+    char buf[BUFSIZ];
+    if (sscanf(line, "ENABLE %s", buf) == 1) {
+      struct module* module = get_module(buf);
+      if (module) {
+        struct enabled_mod* em = malloc(sizeof(struct enabled_mod));
+        em->module = module;
+        em->id = 0;
+        em->next = NULL;
+        if (!client->mods)
+          client->mods = em;
+        else {
+          em->id++;
+          struct enabled_mod* lm = client->mods;
+          while (lm->next) {
+            em->id++;
+            lm = lm->next;
+          };
+          lm->next = em;
+        }
+        evbuffer_add_printf(output, "LOADED %s WITH ID %d\n", buf, em->id);
+      } else
+        evbuffer_add_printf(output, "UNABLE TO LOAD %s\n", buf);
+    }
     free(line);
     line = evbuffer_readln(input, &len, EVBUFFER_EOL_ANY);
   };
@@ -41,6 +68,14 @@ void client_readcb(struct bufferevent* bev, void* context) {
 void client_eventcb(struct bufferevent* bev, short events, void* context) {
   if (!(events & BEV_EVENT_CONNECTED)) {
     struct client* client = context;
+    if (client->mods) {
+      struct enabled_mod* node = client->mods;
+      while (node) {
+        struct enabled_mod* next = node->next;
+        free(node);
+        node = next;
+      };
+    }
     free(client);
   }
 };

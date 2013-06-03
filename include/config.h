@@ -36,4 +36,6 @@ int dispatch_config(struct event_base* event_base);
 
 int send_loaded_modules_info(struct bufferevent* bev);
 
+struct module* get_module(char* name);
+
 #endif //_CONFIG_H

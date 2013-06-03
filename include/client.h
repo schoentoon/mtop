@@ -23,8 +23,15 @@
 #include <event2/bufferevent.h>
 #include <event2/bufferevent_struct.h>
 
+struct enabled_mod {
+  struct module* module;
+  uint16_t id;
+  struct enabled_mod* next;
+};
+
 struct client {
   struct bufferevent* bev;
+  struct enabled_mod* mods;
 };
 
 struct client* new_client();

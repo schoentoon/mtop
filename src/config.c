@@ -100,3 +100,13 @@ int send_loaded_modules_info(struct bufferevent* bev) {
   bufferevent_write(bev, "\n", 2);
   return i;
 };
+
+struct module* get_module(char* name) {
+  struct module* m = config->modules;
+  while (m) {
+    if (strcmp(name, m->name) == 0)
+      return m;
+    m = m->next;
+  };
+  return NULL;
+};
