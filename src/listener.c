@@ -81,5 +81,4 @@ static void listener_callback(struct evconnlistener* listener, evutil_socket_t f
   struct client* client = new_client();
   bufferevent_setcb(bev, client_readcb, NULL, client_eventcb, client);
   bufferevent_enable(bev, EV_READ);
-  send_loaded_modules_info(bev);
 };

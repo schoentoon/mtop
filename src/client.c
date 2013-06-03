@@ -40,7 +40,9 @@ void client_readcb(struct bufferevent* bev, void* context) {
   while (line) {
     DEBUG(255, "Raw line: %s", line);
     char buf[65];
-    if (sscanf(line, "ENABLE %64s", buf) == 1) {
+    if (strcmp(line, "PROTOCOLS") == 0)
+      send_loaded_modules_info(bev);
+    else if (sscanf(line, "ENABLE %64s", buf) == 1) {
       struct module* module = get_module(buf);
       if (module) {
         struct enabled_mod* em = malloc(sizeof(struct enabled_mod));
