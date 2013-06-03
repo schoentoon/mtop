@@ -39,8 +39,8 @@ void client_readcb(struct bufferevent* bev, void* context) {
   char* line = evbuffer_readln(input, &len, EVBUFFER_EOL_ANY);
   while (line) {
     DEBUG(255, "Raw line: %s", line);
-    char buf[BUFSIZ];
-    if (sscanf(line, "ENABLE %s", buf) == 1) {
+    char buf[64];
+    if (sscanf(line, "ENABLE %64s", buf) == 1) {
       struct module* module = get_module(buf);
       if (module) {
         struct enabled_mod* em = malloc(sizeof(struct enabled_mod));
