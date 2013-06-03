@@ -39,7 +39,7 @@ void client_readcb(struct bufferevent* bev, void* context) {
   char* line = evbuffer_readln(input, &len, EVBUFFER_EOL_ANY);
   while (line) {
     DEBUG(255, "Raw line: %s", line);
-    char buf[64];
+    char buf[65];
     if (sscanf(line, "ENABLE %64s", buf) == 1) {
       struct module* module = get_module(buf);
       if (module) {
