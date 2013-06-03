@@ -15,31 +15,20 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CLIENT_H
-#define _CLIENT_H
-
-#include "module.h"
 #include "websocket.h"
 
-#include <event2/bufferevent.h>
-#include <event2/bufferevent_struct.h>
+#include <stdlib.h>
+#include <string.h>
 
-struct enabled_mod {
-  struct module* module;
-  uint16_t id;
-  struct enabled_mod* next;
+struct websocket* new_websocket() {
+  struct websocket* output = malloc(sizeof(struct websocket));
+  memset(output, 0, sizeof(struct websocket));
+  return output;
 };
 
-struct client {
-  struct bufferevent* bev;
-  struct enabled_mod* mods;
-  struct websocket* websocket;
+void free_websocket(struct websocket* websocket) {
+  if (websocket) {
+    free(websocket->key);
+    free(websocket);
+  };
 };
-
-struct client* new_client();
-
-void client_readcb(struct bufferevent* bev, void* context);
-
-void client_eventcb(struct bufferevent* bev, short events, void* context);
-
-#endif //_CLIENT_H

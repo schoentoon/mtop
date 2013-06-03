@@ -15,31 +15,20 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CLIENT_H
-#define _CLIENT_H
+#ifndef _WEBSOCKET_H
+#define _WEBSOCKET_H
 
-#include "module.h"
-#include "websocket.h"
+#include <sys/types.h>
 
-#include <event2/bufferevent.h>
-#include <event2/bufferevent_struct.h>
+#define MAGIC_STRING "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-struct enabled_mod {
-  struct module* module;
-  uint16_t id;
-  struct enabled_mod* next;
+struct websocket {
+  char* key;
+  u_int16_t version;
 };
 
-struct client {
-  struct bufferevent* bev;
-  struct enabled_mod* mods;
-  struct websocket* websocket;
-};
+struct websocket* new_websocket();
 
-struct client* new_client();
+void free_websocket(struct websocket* websocket);
 
-void client_readcb(struct bufferevent* bev, void* context);
-
-void client_eventcb(struct bufferevent* bev, short events, void* context);
-
-#endif //_CLIENT_H
+#endif //_WEBSOCKET_H

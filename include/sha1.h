@@ -15,31 +15,23 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CLIENT_H
-#define _CLIENT_H
+#ifndef _SHA_1_H
+#define _SHA_1_H
 
-#include "module.h"
-#include "websocket.h"
+typedef struct {
+  unsigned long long size;
+  unsigned int H[5];
+  unsigned int W[16];
+} blk_SHA_CTX;
 
-#include <event2/bufferevent.h>
-#include <event2/bufferevent_struct.h>
+void blk_SHA1_Init(blk_SHA_CTX *ctx);
+void blk_SHA1_Update(blk_SHA_CTX *ctx, const void *dataIn, unsigned long len);
+void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx);
 
-struct enabled_mod {
-  struct module* module;
-  uint16_t id;
-  struct enabled_mod* next;
-};
+#define SHA_CTX blk_SHA_CTX
+#define SHA1_Init blk_SHA1_Init
+#define SHA1_Update blk_SHA1_Update
+#define SHA1_Final blk_SHA1_Final
+#define SHA1_LEN 20
 
-struct client {
-  struct bufferevent* bev;
-  struct enabled_mod* mods;
-  struct websocket* websocket;
-};
-
-struct client* new_client();
-
-void client_readcb(struct bufferevent* bev, void* context);
-
-void client_eventcb(struct bufferevent* bev, short events, void* context);
-
-#endif //_CLIENT_H
+#endif //_SHA_1_H

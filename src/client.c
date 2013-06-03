@@ -17,7 +17,9 @@
 
 #include "client.h"
 
+#include "sha1.h"
 #include "debug.h"
+#include "base64.h"
 #include "config.h"
 
 #include <stdio.h>
@@ -36,10 +38,11 @@ void client_readcb(struct bufferevent* bev, void* context) {
   struct evbuffer* input = bufferevent_get_input(bev);
   struct evbuffer* output = bufferevent_get_output(bev);
   size_t len;
-  char* line = evbuffer_readln(input, &len, EVBUFFER_EOL_ANY);
+  char* line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF);
   while (line) {
     DEBUG(255, "Raw line: %s", line);
     char buf[65];
+    int number;
     if (strcmp(line, "PROTOCOLS") == 0)
       send_loaded_modules_info(bev);
     else if (sscanf(line, "ENABLE %64s", buf) == 1) {
@@ -72,9 +75,32 @@ void client_readcb(struct bufferevent* bev, void* context) {
         }
       } else
         evbuffer_add_printf(output, "UNABLE TO LOAD %s\n", buf);
+    } else if (sscanf(line, "Sec-WebSocket-Key: %64s", buf) == 1) {
+      if (!client->websocket)
+        client->websocket = new_websocket();
+      client->websocket->key = strdup(buf);
+    } else if (sscanf(line, "Sec-WebSocket-Version: %d", &number) == 1) {
+      if (!client->websocket)
+        client->websocket = new_websocket();
+      client->websocket->version = number;
+    } else if (len == 0 && client->websocket) {
+      SHA_CTX c;
+      unsigned char *base64_encoded;
+      unsigned char raw[SHA1_LEN];
+      size_t out_len;
+      SHA1_Init(&c);
+      char keybuf[BUFSIZ];
+      snprintf(keybuf, sizeof(keybuf), "%s%s", client->websocket->key, MAGIC_STRING);
+      SHA1_Update(&c, keybuf, strlen(keybuf));
+      SHA1_Final(raw, &c);
+      base64_encoded = base64_encode((unsigned char*) raw, SHA1_LEN, &out_len);
+      evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n"
+                                  "Upgrade: websocket\r\n"
+                                  "Connection: Upgrade\r\n"
+                                  "Sec-WebSocket-Accept: %s\r\n\r\n", base64_encoded);
     }
     free(line);
-    line = evbuffer_readln(input, &len, EVBUFFER_EOL_ANY);
+    line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF);
   };
 };
 
@@ -89,6 +115,7 @@ void client_eventcb(struct bufferevent* bev, short events, void* context) {
         node = next;
       };
     }
+    free_websocket(client->websocket);
     free(client);
     bufferevent_free(bev);
   }
