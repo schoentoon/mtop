@@ -56,6 +56,7 @@ void client_readcb(struct bufferevent* bev, void* context) {
           do {
             if (lm->module == em->module) {
               evbuffer_add_printf(output, "ALREADY LOADED %s WITH ID %d\n", em->module->name, em->id);
+              free(em);
               lm = NULL;
               break;
             }
