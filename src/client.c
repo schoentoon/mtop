@@ -26,7 +26,9 @@
 #include <event2/buffer.h>
 
 struct client* new_client() {
-  return malloc(sizeof(struct client));
+  struct client* client = malloc(sizeof(struct client));
+  memset(client, 0, sizeof(struct client));
+  return client;
 };
 
 void client_readcb(struct bufferevent* bev, void* context) {
@@ -77,5 +79,6 @@ void client_eventcb(struct bufferevent* bev, short events, void* context) {
       };
     }
     free(client);
+    bufferevent_free(bev);
   }
 };
