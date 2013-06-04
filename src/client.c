@@ -62,7 +62,7 @@ void client_readcb(struct bufferevent* bev, void* context) {
               lm = NULL;
               break;
             }
-            em->id++;
+            em->id = lm->id + 1;
             lm = lm->next;
           } while (lm);
           if (lm) {
@@ -72,6 +72,28 @@ void client_readcb(struct bufferevent* bev, void* context) {
         }
       } else
         evbuffer_add_printf(output, "UNABLE TO LOAD %s\n", buf);
+    } else if (sscanf(line, "DISABLE %64s", buf) == 1) {
+      struct module* module = get_module(buf);
+      if (module) {
+        struct enabled_mod* lm = client->mods;
+        if (lm->module == module) {
+          client->mods = lm->next;
+          evbuffer_add_printf(output, "DISABLED %s WITH ID %d\n", buf, lm->id);
+          free(lm);
+        } else {
+          while (lm->next) {
+            if (lm->next->module == module) {
+              struct enabled_mod* to_free = lm->next;
+              lm->next = lm->next->next;
+              evbuffer_add_printf(output, "DISABLED %s WITH ID %d\n", buf, to_free->id);
+              free(to_free);
+              break;
+            }
+            lm = lm->next;
+          };
+        }
+      } else
+        evbuffer_add_printf(output, "MODULE %s DOESN'T EXIST\n", buf);
     }
     free(line);
     line = evbuffer_readln(input, &len, EVBUFFER_EOL_ANY);
