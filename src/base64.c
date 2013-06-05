@@ -85,7 +85,7 @@ unsigned char * base64_encode(const unsigned char *src, size_t len, size_t *out_
     *out_len = pos - out;
 
   out[*out_len - 1] = '\0';
-    return out;
+  return out;
 };
 
 /**
