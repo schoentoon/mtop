@@ -125,7 +125,7 @@ void client_readcb(struct bufferevent* bev, void* context) {
     char data[BUFSIZ];
     size_t read_bytes = bufferevent_read(bev, &data, sizeof(data));
     if (read_bytes) {
-      if (data[0] == 136) /* Disconnected */
+      if (((unsigned char) data[0]) == 136) /* Disconnected */
         client_eventcb(bev, BEV_FINISHED, context);
       else {
         unsigned int length_code = 0;
