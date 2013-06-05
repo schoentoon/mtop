@@ -18,6 +18,7 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
+#include "client.h"
 #include "module.h"
 #include "listener.h"
 
@@ -34,7 +35,7 @@ int parse_config(char* config_file);
 
 int dispatch_config(struct event_base* event_base);
 
-int send_loaded_modules_info(struct bufferevent* bev);
+int send_loaded_modules_info(struct client* client);
 
 struct module* get_module(char* name);
 

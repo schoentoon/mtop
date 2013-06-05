@@ -35,11 +35,10 @@ struct client* new_client() {
 
 void process_line(struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
-  struct evbuffer* output = bufferevent_get_output(client->bev);
   char buf[65];
   int number;
   if (strcmp(line, "PROTOCOLS") == 0)
-    send_loaded_modules_info(client->bev);
+    send_loaded_modules_info(client);
   else if (sscanf(line, "ENABLE %64s", buf) == 1) {
     struct module* module = get_module(buf);
     if (module) {
@@ -49,13 +48,13 @@ void process_line(struct client* client, char* line, size_t len) {
       em->next = NULL;
       if (!client->mods) {
         client->mods = em;
-        evbuffer_add_printf(output, "LOADED %s WITH ID %d\n", buf, em->id);
+        client_send_data(client, "LOADED %s WITH ID %d", buf, em->id);
       } else {
         em->id++;
         struct enabled_mod* lm = client->mods;
         do {
           if (lm->module == em->module) {
-            evbuffer_add_printf(output, "ALREADY LOADED %s WITH ID %d\n", em->module->name, em->id);
+            client_send_data(client, "ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
             free(em);
             lm = NULL;
             break;
@@ -65,25 +64,25 @@ void process_line(struct client* client, char* line, size_t len) {
         } while (lm);
         if (lm) {
           lm->next = em;
-          evbuffer_add_printf(output, "LOADED %s WITH ID %d\n", buf, em->id);
+          client_send_data(client, "LOADED %s WITH ID %d", buf, em->id);
         }
       }
     } else
-      evbuffer_add_printf(output, "UNABLE TO LOAD %s\n", buf);
+      client_send_data(client, "UNABLE TO LOAD %s\n", buf);
   } else if (sscanf(line, "DISABLE %64s", buf) == 1) {
     struct module* module = get_module(buf);
     if (module) {
       struct enabled_mod* lm = client->mods;
       if (lm->module == module) {
         client->mods = lm->next;
-        evbuffer_add_printf(output, "DISABLED %s WITH ID %d\n", buf, lm->id);
+        client_send_data(client, "DISABLED %s WITH ID %d", buf, lm->id);
         free(lm);
       } else {
         while (lm->next) {
           if (lm->next->module == module) {
             struct enabled_mod* to_free = lm->next;
             lm->next = lm->next->next;
-            evbuffer_add_printf(output, "DISABLED %s WITH ID %d\n", buf, to_free->id);
+            client_send_data(client, "DISABLED %s WITH ID %d", buf, to_free->id);
             free(to_free);
             break;
           }
@@ -91,7 +90,7 @@ void process_line(struct client* client, char* line, size_t len) {
         };
       }
     } else
-      evbuffer_add_printf(output, "MODULE %s DOESN'T EXIST\n", buf);
+      client_send_data(client, "MODULE %s DOESN'T EXIST", buf);
   } else if (sscanf(line, "Sec-WebSocket-Key: %64s", buf) == 1) {
     if (!client->websocket)
       client->websocket = new_websocket();
@@ -111,6 +110,7 @@ void process_line(struct client* client, char* line, size_t len) {
     SHA1_Update(&c, keybuf, strlen(keybuf));
     SHA1_Final(raw, &c);
     base64_encoded = base64_encode((unsigned char*) raw, SHA1_LEN, &out_len);
+    struct evbuffer* output = bufferevent_get_output(client->bev);
     evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n"
                                 "Upgrade: websocket\r\n"
                                 "Connection: Upgrade\r\n"
@@ -119,9 +119,21 @@ void process_line(struct client* client, char* line, size_t len) {
   }
 };
 
+void client_send_data(struct client* client, char* line, ...) {
+  if (client->websocket && client->websocket->connected) {
+  } else {
+    struct evbuffer* output = bufferevent_get_output(client->bev);
+    va_list arg;
+    va_start(arg, line);
+    evbuffer_add_vprintf(output, line, arg);
+    va_end(arg);
+    evbuffer_add(output, "\n", 2);
+  }
+};
+
 void client_readcb(struct bufferevent* bev, void* context) {
   struct client* client = context;
-  if (client->websocket && client->websocket->connected == 1) {
+  if (client->websocket && client->websocket->connected) {
     char data[BUFSIZ];
     size_t read_bytes = bufferevent_read(bev, &data, sizeof(data));
     if (read_bytes) {

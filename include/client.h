@@ -38,6 +38,8 @@ struct client {
 
 struct client* new_client();
 
+void client_send_data(struct client* client, char* line, ...);
+
 void client_readcb(struct bufferevent* bev, void* context);
 
 void client_eventcb(struct bufferevent* bev, short events, void* context);

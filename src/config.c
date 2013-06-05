@@ -88,16 +88,18 @@ int dispatch_config(struct event_base* event_base) {
   return 0;
 };
 
-int send_loaded_modules_info(struct bufferevent* bev) {
-  bufferevent_write(bev, "MODULES ", 9);
+int send_loaded_modules_info(struct client* client) {
+  char buf[BUFSIZ];
+  char* pos = buf;
+  pos += snprintf(buf, sizeof(buf), "MODULES");
   struct module* m = config->modules;
   int i = 0;
   while (m) {
     i++;
-    bufferevent_write(bev, m->name, strlen(m->name) + 1);
+    pos += snprintf(pos, sizeof(buf)-(pos-buf), " %s", m->name);
     m = m->next;
   }
-  bufferevent_write(bev, "\n", 2);
+  client_send_data(client, buf);
   return i;
 };
 
