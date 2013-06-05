@@ -33,7 +33,7 @@ struct client* new_client() {
   return client;
 };
 
-void process_line(struct bufferevent* bev, struct client* client, char* line) {
+void process_line(struct bufferevent* bev, struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
   struct evbuffer* output = bufferevent_get_output(bev);
   char buf[65];
@@ -100,7 +100,7 @@ void process_line(struct bufferevent* bev, struct client* client, char* line) {
     if (!client->websocket)
       client->websocket = new_websocket();
     client->websocket->version = number;
-  } else if (line[0] == '\0' && client->websocket) {
+  } else if (len == 0 && client->websocket) {
     SHA_CTX c;
     unsigned char *base64_encoded;
     unsigned char raw[SHA1_LEN];
@@ -115,17 +115,62 @@ void process_line(struct bufferevent* bev, struct client* client, char* line) {
                                 "Upgrade: websocket\r\n"
                                 "Connection: Upgrade\r\n"
                                 "Sec-WebSocket-Accept: %s\r\n\r\n", base64_encoded);
+    client->websocket->connected = 1;
   }
 };
 
 void client_readcb(struct bufferevent* bev, void* context) {
   struct client* client = context;
-  struct evbuffer* input = bufferevent_get_input(bev);
-  char* line;
-  while ((line = evbuffer_readln(input, NULL, EVBUFFER_EOL_ANY))) {
-    process_line(bev, client, line);
-    free(line);
-  };
+  if (client->websocket && client->websocket->connected == 1) {
+    char data[BUFSIZ];
+    size_t read_bytes = bufferevent_read(bev, &data, sizeof(data));
+    if (read_bytes) {
+      if (data[0] == 136) /* Disconnected */
+        client_eventcb(bev, BEV_FINISHED, context);
+      else {
+        unsigned int length_code = 0;
+        unsigned int packet_length = 0;
+        int index_first_mask = 0;
+        int index_first_data_byte = 0;
+        unsigned char mask[4];
+        length_code = ((unsigned char) data[1]) & 127;
+        if (length_code <= 125) {
+          index_first_mask = 2;
+          mask[0] = data[2];
+          mask[1] = data[3];
+          mask[2] = data[4];
+          mask[3] = data[5];
+        } else if (length_code == 126) {
+          index_first_mask = 4;
+          mask[0] = data[4];
+          mask[1] = data[5];
+          mask[2] = data[6];
+          mask[3] = data[7];
+        } else if (length_code == 127) {
+          index_first_mask = 10;
+          mask[0] = data[10];
+          mask[1] = data[11];
+          mask[2] = data[12];
+          mask[3] = data[13];
+        }
+        index_first_data_byte = index_first_mask + 4;
+        packet_length = read_bytes - index_first_data_byte;
+        int i, j;
+        char buf[BUFSIZ];
+        for (i = index_first_data_byte, j = 0; i < read_bytes; i++, j++)
+          buf[j] = (unsigned char) data[i] ^ mask[j % 4];
+        process_line(bev, client, buf, packet_length);
+      }
+    }
+  } else {
+    struct evbuffer* input = bufferevent_get_input(bev);
+    char* line;
+    size_t len;
+    while ((line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF))) {
+      process_line(bev, client, line, len);
+      free(line);
+    };
+  }
 };
 
 void client_eventcb(struct bufferevent* bev, short events, void* context) {

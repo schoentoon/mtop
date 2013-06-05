@@ -25,6 +25,7 @@
 struct websocket {
   char* key;
   u_int16_t version;
+  unsigned char connected : 1;
 };
 
 struct websocket* new_websocket();
