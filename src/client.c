@@ -204,6 +204,7 @@ void client_readcb(struct bufferevent* bev, void* context) {
         char buf[BUFSIZ];
         for (i = index_first_data_byte, j = 0; i < read_bytes; i++, j++)
           buf[j] = (unsigned char) data[i] ^ mask[j % 4];
+        buf[j++] = '\0';
         process_line(client, buf, packet_length);
       }
     }
