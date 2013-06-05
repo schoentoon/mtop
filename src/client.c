@@ -33,13 +33,13 @@ struct client* new_client() {
   return client;
 };
 
-void process_line(struct bufferevent* bev, struct client* client, char* line, size_t len) {
+void process_line(struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
-  struct evbuffer* output = bufferevent_get_output(bev);
+  struct evbuffer* output = bufferevent_get_output(client->bev);
   char buf[65];
   int number;
   if (strcmp(line, "PROTOCOLS") == 0)
-    send_loaded_modules_info(bev);
+    send_loaded_modules_info(client->bev);
   else if (sscanf(line, "ENABLE %64s", buf) == 1) {
     struct module* module = get_module(buf);
     if (module) {
@@ -159,7 +159,7 @@ void client_readcb(struct bufferevent* bev, void* context) {
         char buf[BUFSIZ];
         for (i = index_first_data_byte, j = 0; i < read_bytes; i++, j++)
           buf[j] = (unsigned char) data[i] ^ mask[j % 4];
-        process_line(bev, client, buf, packet_length);
+        process_line(client, buf, packet_length);
       }
     }
   } else {
@@ -167,7 +167,7 @@ void client_readcb(struct bufferevent* bev, void* context) {
     char* line;
     size_t len;
     while ((line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF))) {
-      process_line(bev, client, line, len);
+      process_line(client, line, len);
       free(line);
     };
   }
