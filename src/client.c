@@ -37,6 +37,7 @@ void process_line(struct bufferevent* bev, struct client* client, char* line) {
   DEBUG(255, "Raw line: %s", line);
   struct evbuffer* output = bufferevent_get_output(bev);
   char buf[65];
+  int number;
   if (strcmp(line, "PROTOCOLS") == 0)
     send_loaded_modules_info(bev);
   else if (sscanf(line, "ENABLE %64s", buf) == 1) {
@@ -99,7 +100,7 @@ void process_line(struct bufferevent* bev, struct client* client, char* line) {
     if (!client->websocket)
       client->websocket = new_websocket();
     client->websocket->version = number;
-  } else if (len == 0 && client->websocket) {
+  } else if (line[0] == '\0' && client->websocket) {
     SHA_CTX c;
     unsigned char *base64_encoded;
     unsigned char raw[SHA1_LEN];
