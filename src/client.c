@@ -37,7 +37,7 @@ void process_line(struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
   char buf[65];
   int number;
-  if (strcmp(line, "PROTOCOLS") == 0)
+  if (strcmp(line, "MODULES") == 0)
     send_loaded_modules_info(client);
   else if (sscanf(line, "ENABLE %64s", buf) == 1) {
     struct module* module = get_module(buf);
