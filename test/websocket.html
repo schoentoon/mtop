@@ -37,11 +37,9 @@
     var split = evt.data.split(" ");
     if (split[0] == "MODULES") {
       var i;
-      for (i = 1; i < split.length; i++){
+      for (i = 1; i < split.length; i++)
         doSend("ENABLE " + split[i]);
-      }
     }
-    //websocket.close();
   }
   function onError(evt) {
     writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
