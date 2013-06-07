@@ -29,6 +29,8 @@
   }
   function onClose(evt) {
     writeToScreen("DISCONNECTED");
+    websocket = null;
+    document.getElementById("disconnect").innerText = "Reconnect";
   }
   function onMessage(evt) {
     writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data+'</span>');
@@ -54,8 +56,23 @@
     pre.innerHTML = message;
     output.appendChild(pre);
   }
+  function disconnect() {
+    if (websocket != null)
+      websocket.close();
+    else {
+      testWebSocket();
+      document.getElementById("disconnect").innerText = "Disconnect";
+    }
+  }
+  function sendStuff() {
+    var input = document.getElementById("sendstuff");
+    doSend(input.value);
+    input.value = "";
+  }
   window.addEventListener("load", init, false);
 </script>
 <h2>WebSocket Test</h2>
+<input type="text" id="sendstuff" onkeydown="if (event.keyCode == 13) sendStuff()"/></br>
+<button onclick="disconnect()" id="disconnect">Disconnect</button></br>
 <div id="output"></div>
 </html>
