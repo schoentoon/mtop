@@ -24,7 +24,9 @@
 
 struct websocket {
   char* key;
-  u_int16_t version;
+  unsigned char has_upgrade : 1;
+  unsigned char connection_is_upgrade : 1;
+  unsigned char correct_version : 1;
   unsigned char connected : 1;
 };
 

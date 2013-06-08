@@ -91,31 +91,44 @@ void process_line(struct client* client, char* line, size_t len) {
       }
     } else
       client_send_data(client, "MODULE %s DOESN'T EXIST", buf);
-  } else if (sscanf(line, "Sec-WebSocket-Key: %64s", buf) == 1) {
-    if (!client->websocket)
-      client->websocket = new_websocket();
-    client->websocket->key = strdup(buf);
-  } else if (sscanf(line, "Sec-WebSocket-Version: %d", &number) == 1) {
-    if (!client->websocket)
-      client->websocket = new_websocket();
-    client->websocket->version = number;
-  } else if (len == 0 && client->websocket) {
-    SHA_CTX c;
-    unsigned char *base64_encoded;
-    unsigned char raw[SHA1_LEN];
-    size_t out_len;
-    SHA1_Init(&c);
-    char keybuf[BUFSIZ];
-    snprintf(keybuf, sizeof(keybuf), "%s%s", client->websocket->key, MAGIC_STRING);
-    SHA1_Update(&c, keybuf, strlen(keybuf));
-    SHA1_Final(raw, &c);
-    base64_encoded = base64_encode((unsigned char*) raw, SHA1_LEN, &out_len);
-    struct evbuffer* output = bufferevent_get_output(client->bev);
-    evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n"
-                                "Upgrade: websocket\r\n"
-                                "Connection: Upgrade\r\n"
-                                "Sec-WebSocket-Accept: %s\r\n\r\n", base64_encoded);
-    client->websocket->connected = 1;
+  } else {
+    char bigbuf[1025];
+    if (!client->websocket) {
+      int major, minor;
+      if (sscanf(line, "GET / HTTP/%d.%d", &major, &minor) == 2) {
+        if (major >= 1 && minor >= 1)
+          client->websocket = new_websocket();
+        else {
+          struct evbuffer* output = bufferevent_get_output(client->bev);
+          evbuffer_add_printf(output, "HTTP/%d.%d 500 Must be at least HTTP 1.1\r\n\r\n", major, minor);
+        }
+      }
+    } else if (sscanf(line, "Upgrade: %1024s", bigbuf) == 1 && strstr(bigbuf, "websocket"))
+      client->websocket->has_upgrade = 1;
+    else if (sscanf(line, "Connection: %1024s", bigbuf) == 1 && strstr(bigbuf, "Upgrade"))
+      client->websocket->connection_is_upgrade = 1;
+    else if (sscanf(line, "Sec-WebSocket-Key: %64s", buf) == 1)
+      client->websocket->key = strdup(buf);
+    else if (sscanf(line, "Sec-WebSocket-Version: %d", &number) == 1 && number == 13)
+      client->websocket->correct_version = 1;
+    else if (len == 0 && client->websocket->has_upgrade && client->websocket->connection_is_upgrade && client->websocket->correct_version) {
+      SHA_CTX c;
+      unsigned char *base64_encoded;
+      unsigned char raw[SHA1_LEN];
+      size_t out_len;
+      SHA1_Init(&c);
+      char keybuf[BUFSIZ];
+      snprintf(keybuf, sizeof(keybuf), "%s%s", client->websocket->key, MAGIC_STRING);
+      SHA1_Update(&c, keybuf, strlen(keybuf));
+      SHA1_Final(raw, &c);
+      base64_encoded = base64_encode((unsigned char*) raw, SHA1_LEN, &out_len);
+      struct evbuffer* output = bufferevent_get_output(client->bev);
+      evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n"
+                                  "Upgrade: websocket\r\n"
+                                  "Connection: Upgrade\r\n"
+                                  "Sec-WebSocket-Accept: %s\r\n\r\n", base64_encoded);
+      client->websocket->connected = 1;
+    }
   }
 };
 
