@@ -18,6 +18,8 @@
 #ifndef _MODULE_H
 #define _MODULE_H
 
+#include <stddef.h>
+
 typedef enum {
   FLOAT
 } module_type;
@@ -28,6 +30,7 @@ struct module {
   char* name;
   module_type type;
   void* module_data;
+  void* update_function;
   struct module* next;
 };
 
@@ -41,5 +44,7 @@ typedef float mod_get_float(void* context);
 struct module* new_module(char* filename);
 
 void free_module(struct module* module);
+
+size_t update_value(struct module* module, char* buf, size_t buf_size);
 
 #endif //_MODULE_H

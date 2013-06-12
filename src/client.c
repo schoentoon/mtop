@@ -33,6 +33,20 @@ struct client* new_client() {
   return client;
 };
 
+struct enabled_mod* get_enabled_mod(struct client* client, char* buf) {
+  struct enabled_mod* lm = client->mods;
+  if (strcmp(lm->module->name, buf) == 0)
+    return lm;
+  else {
+    while (lm->next) {
+      if (strcmp(lm->next->module->name, buf) == 0)
+        return lm->next;
+      lm = lm->next;
+    };
+  }
+  return NULL;
+};
+
 void process_line(struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
   char buf[65];
@@ -91,6 +105,13 @@ void process_line(struct client* client, char* line, size_t len) {
       }
     } else
       client_send_data(client, "MODULE %s DOESN'T EXIST", buf);
+  } else if (sscanf(line, "PULL %64s", buf) == 1) {
+    struct enabled_mod* module = get_enabled_mod(client, buf);
+    if (module) {
+      char databuf[BUFSIZ];
+      if (update_value(module->module, databuf, sizeof(databuf)))
+        client_send_data(client, "%s: %s", module->module->name, databuf);
+    };
   } else {
     char bigbuf[1025];
     if (!client->websocket) {

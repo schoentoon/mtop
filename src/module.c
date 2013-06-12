@@ -60,6 +60,7 @@ struct module* new_module(char* filename) {
       free_module(module);
       return NULL;
     }
+    module->update_function = mod_float;
     module->module_data = malloc(sizeof(float));
     break;
   }
@@ -82,4 +83,15 @@ void free_module(struct module* module) {
     };
     free(module);
   }
+};
+
+size_t update_value(struct module* module, char* buf, size_t buf_size) {
+  switch (module->type) {
+  case FLOAT: {
+    mod_get_float* mod_float = (mod_get_float*) module->update_function;
+    float tmp = mod_float(module->context);
+    *((float*) module->module_data) = tmp;
+    return snprintf(buf, buf_size, "%f", tmp);
+  };
+  };
 };
