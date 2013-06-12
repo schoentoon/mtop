@@ -18,14 +18,28 @@
 #ifndef _MODULE_H
 #define _MODULE_H
 
+typedef enum {
+  FLOAT
+} module_type;
+
 struct module {
   void* handle;
+  void* context;
   char* name;
+  module_type type;
+  void* module_data;
   struct module* next;
 };
 
+typedef void* mod_create_context();
+typedef void mod_free_context(void* context);
 typedef char* mod_name_function();
+typedef module_type mod_type_function(void* context);
+
+typedef float mod_get_float(void* context);
 
 struct module* new_module(char* filename);
+
+void free_module(struct module* module);
 
 #endif //_MODULE_H

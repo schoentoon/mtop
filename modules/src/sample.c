@@ -19,4 +19,12 @@
 
 char* getName() {
   return "sample";
-}
+};
+
+module_type getType(void* context) {
+  return FLOAT;
+};
+
+float getFloat(void* context) {
+  return 0.0;
+};

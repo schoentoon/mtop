@@ -31,11 +31,55 @@ struct module* new_module(char* filename) {
   mod_name_function* name = dlsym(handle, "getName");
   if (!name) {
     fprintf(stderr, "%s\n", dlerror());
+    dlclose(handle);
+    return NULL;
+  }
+  mod_type_function* type = dlsym(handle, "getType");
+  if (!type) {
+    fprintf(stderr, "%s\n", dlerror());
+    dlclose(handle);
     return NULL;
   }
   struct module* module = malloc(sizeof(struct module));
   memset(module, 0, sizeof(struct module));
   module->handle = handle;
   module->name = strdup(name());
+  mod_create_context* create_context = dlsym(handle, "createContext");
+  if (create_context) {
+    module->context = create_context();
+    mod_free_context* free_context = dlsym(handle, "freeContext");
+    if (!free_context)
+      fprintf(stderr, "WARNING, you seem to have a createContext() function but no freeContext() function, you're possibly leaking memory.\n");
+  }
+  module->type = type(module->context);
+  switch (module->type) {
+  case FLOAT: {
+    mod_get_float* mod_float = dlsym(handle, "getFloat");
+    if (!mod_float) {
+      fprintf(stderr, "%s\n", dlerror());
+      free_module(module);
+      return NULL;
+    }
+    module->module_data = malloc(sizeof(float));
+    break;
+  }
+  };
   return module;
+};
+
+void free_module(struct module* module) {
+  if (module) {
+    if (module->context) {
+      mod_free_context* free_context = dlsym(module->handle, "freeContext");
+      free_context(module->context);
+    }
+    dlclose(module->handle);
+    free(module->name);
+    switch (module->type) {
+    case FLOAT:
+      free(module->module_data);
+      break;
+    };
+    free(module);
+  }
 };
