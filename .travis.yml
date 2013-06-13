@@ -8,6 +8,9 @@ before_install:
 script:
   - make clean
   - make CC=$CC
+env:
+  - DEFINES=-DNO_DEBUG
+  -
 notifications:
   irc:
     channels:
