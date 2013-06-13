@@ -33,6 +33,7 @@ struct enabled_mod {
 struct client {
   struct bufferevent* bev;
   struct enabled_mod* mods;
+  struct event* timer;
   struct websocket* websocket;
 };
 
