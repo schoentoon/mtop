@@ -25,6 +25,7 @@
 #include <string.h>
 
 struct module* new_module(char* filename, char* alias) {
+  DEBUG(100, "Loading %s with alias %s", filename, alias);
   void* handle = dlopen(filename, RTLD_LAZY);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
@@ -79,7 +80,6 @@ struct module* new_module(char* filename, char* alias) {
       struct module* first = module;
       int i = 0;
       while (aliases[i]) {
-        DEBUG(255, "Loading %s with alias %s", filename, aliases[i]);
         module->next = new_module(filename, aliases[i]);
         module = module->next;
         free(aliases[i++]);

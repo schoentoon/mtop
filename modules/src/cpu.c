@@ -33,7 +33,7 @@ int count_cpus() {
     return -1;
   int cpu_count = 0;
   while (fgetc(stat) != '\n');
-  while (fscanf(stat, "cpu%d", &cpu_count) == 1) 
+  while (fscanf(stat, "cpu%d", &cpu_count) == 1)
     while (fgetc(stat) != '\n');
   fclose(stat);
   return cpu_count + 1;
@@ -54,10 +54,50 @@ char** listAliases() {
   return output;
 };
 
+struct CPUData {
+  int cpu;
+  unsigned long long loadTime;
+  unsigned long long totalTime;
+};
+
+float getFloat(void* context);
+
+void* createContext(char* name) {
+  struct CPUData* output = malloc(sizeof(struct CPUData));
+  memset(output, 0, sizeof(struct CPUData));
+  if (sscanf(name, "cpu%d", &output->cpu) != 1)
+    output->cpu = -1;
+  getFloat((void*) output); /* Just to fill in load and total */
+  return output;
+};
+
+void freeContext(void* context) {
+  free(context);
+};
+
 module_type getType(void* context) {
   return FLOAT;
 };
 
 float getFloat(void* context) {
-  return 0.0;
+  struct CPUData* cpudata = context;
+  FILE* stat = fopen(PROC_STAT, "r");
+  unsigned long long user, nice, system, idle;
+  if (cpudata->cpu == -1) {
+    if (fscanf(stat, "cpu %llu %llu %llu %llu", &user, &nice, &system, &idle) != 4)
+      return -1.0;
+  } else {
+    int cpu;
+    int cpu_we_want = cpudata->cpu;
+    while (fgetc(stat) != '\n');
+    while (fscanf(stat, "cpu%d %llu %llu %llu %llu", &cpu, &user, &nice, &system, &idle) == 5 && cpu != cpu_we_want)
+      while (fgetc(stat) != '\n');
+  }
+  fclose(stat);
+  unsigned long long load = user + nice + system;
+  unsigned long long total = load + idle;
+  float output = ((float) ((load - cpudata->loadTime) * 100)) / ((float) (total - cpudata->totalTime));
+  cpudata->loadTime = load;
+  cpudata->totalTime = total;
+  return output;
 };
