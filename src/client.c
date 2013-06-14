@@ -64,23 +64,27 @@ void process_line(struct client* client, char* line, size_t len) {
       } else {
         em->id++;
         struct enabled_mod* lm = client->mods;
-        do {
-          if (lm->module == em->module) {
-            client_send_data(client, "ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
-            free(em);
-            lm = NULL;
-            break;
-          }
-          em->id = lm->id + 1;
-          lm = lm->next;
-        } while (lm);
-        if (lm) {
+        if (lm->module == em->module) {
+          client_send_data(client, "ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
+          free(em);
+        } else {
+          while (lm) {
+            if (lm->module == em->module) {
+              client_send_data(client, "ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
+              free(em);
+              return;
+            }
+            em->id = lm->id + 1;
+            if (!lm->next)
+              break;
+            lm = lm->next;
+          };
           lm->next = em;
           client_send_data(client, "LOADED %s WITH ID %d", buf, em->id);
         }
       }
     } else
-      client_send_data(client, "UNABLE TO LOAD %s\n", buf);
+      client_send_data(client, "UNABLE TO LOAD %s", buf);
   } else if (sscanf(line, "DISABLE %64s", buf) == 1) {
     struct module* module = get_module(buf);
     if (module) {
@@ -239,9 +243,9 @@ void client_readcb(struct bufferevent* bev, void* context) {
         packet_length = read_bytes - index_first_data_byte;
         int i, j;
         char buf[BUFSIZ];
+        memset(buf, 0, sizeof(buf));
         for (i = index_first_data_byte, j = 0; i < read_bytes; i++, j++)
           buf[j] = (unsigned char) data[i] ^ mask[j % 4];
-        buf[j++] = '\0';
         process_line(client, buf, packet_length);
       }
     }
