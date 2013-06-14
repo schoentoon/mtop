@@ -56,7 +56,7 @@ int parse_config(char* config_file) {
           }
         }
       } else if (strcmp(key, "module") == 0) {
-        struct module* m = new_module(value);
+        struct module* m = new_module(value, NULL);
         if (m) {
           if (!config->modules)
             config->modules = m;

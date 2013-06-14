@@ -1,11 +1,11 @@
-CFLAGS := ${CFLAGS} -Wall -O2 -mtune=native -g
+CFLAGS := -Wall -O2 -mtune=native -g ${CFLAGS}
 MFLAGS := -shared -fPIC
 INC    := -Iinclude ${INC}
 LFLAGS := -levent -ldl -Wl,--export-dynamic
 DEFINES:= ${DEFINES}
 CC     := gcc
 BINARY := mtop
-MODULES:= modules/sample.so
+MODULES:= modules/sample.so modules/cpu.so
 DEPS   := build/main.o build/debug.o build/config.o build/listener.o build/module.o build/client.o \
 build/websocket.o build/sha1.o build/base64.o
 
@@ -45,6 +45,9 @@ build/base64.o: src/base64.c include/base64.h
 
 modules/sample.so: modules/src/sample.c
 	$(CC) $(CFLAGS) $(MFLAGS) $(DEFINES) $(INC) -o modules/sample.so modules/src/sample.c
+
+modules/cpu.so: modules/src/cpu.c
+	$(CC) $(CFLAGS) $(MFLAGS) $(DEFINES) $(INC) -o modules/cpu.so modules/src/cpu.c
 
 bin/$(BINARY): $(DEPS)
 	$(CC) $(CFLAGS) $(DEFINES) $(INC) -o bin/$(BINARY) $(DEPS) $(LFLAGS)

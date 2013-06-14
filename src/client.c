@@ -267,7 +267,8 @@ void client_eventcb(struct bufferevent* bev, short events, void* context) {
         node = next;
       };
     }
-    event_free(client->timer);
+    if (client->timer) /* Why aren't you checking for NULL libevent?... */
+      event_free(client->timer);
     free_websocket(client->websocket);
     free(client);
     bufferevent_free(bev);

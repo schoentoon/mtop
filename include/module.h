@@ -34,14 +34,15 @@ struct module {
   struct module* next;
 };
 
-typedef void* mod_create_context();
+typedef void* mod_create_context(char* name);
 typedef void mod_free_context(void* context);
 typedef char* mod_name_function();
 typedef module_type mod_type_function(void* context);
+typedef char** mod_list_aliases();
 
 typedef float mod_get_float(void* context);
 
-struct module* new_module(char* filename);
+struct module* new_module(char* filename, char* alias);
 
 void free_module(struct module* module);
 

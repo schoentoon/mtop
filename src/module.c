@@ -17,12 +17,14 @@
 
 #include "module.h"
 
+#include "debug.h"
+
 #include <stdio.h>
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct module* new_module(char* filename) {
+struct module* new_module(char* filename, char* alias) {
   void* handle = dlopen(filename, RTLD_LAZY);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
@@ -43,10 +45,13 @@ struct module* new_module(char* filename) {
   struct module* module = malloc(sizeof(struct module));
   memset(module, 0, sizeof(struct module));
   module->handle = handle;
-  module->name = strdup(name());
+  if (alias)
+    module->name = strdup(alias);
+  else
+    module->name = strdup(name());
   mod_create_context* create_context = dlsym(handle, "createContext");
   if (create_context) {
-    module->context = create_context();
+    module->context = create_context(module->name);
     mod_free_context* free_context = dlsym(handle, "freeContext");
     if (!free_context)
       fprintf(stderr, "WARNING, you seem to have a createContext() function but no freeContext() function, you're possibly leaking memory.\n");
@@ -65,6 +70,24 @@ struct module* new_module(char* filename) {
     break;
   }
   };
+  if (!alias) {
+    mod_list_aliases* list_aliases_func = dlsym(handle, "listAliases");
+    if (list_aliases_func) {
+      char** aliases = list_aliases_func();
+      if (!aliases)
+        return module;
+      struct module* first = module;
+      int i = 0;
+      while (aliases[i]) {
+        DEBUG(255, "Loading %s with alias %s", filename, aliases[i]);
+        module->next = new_module(filename, aliases[i]);
+        module = module->next;
+        free(aliases[i++]);
+      };
+      free(aliases);
+      return first;
+    }
+  }
   return module;
 };
 
