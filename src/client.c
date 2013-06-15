@@ -232,14 +232,16 @@ void client_readcb(struct bufferevent* bev, void* context) {
           length = length_code;
           if (bufferevent_read(bev, mask, sizeof(mask)) != 4)
             return;
-        }/* else if (length_code == 126) {
-          index_first_mask = 4;
-          length = 126;
-          mask[0] = data[4];
-          mask[1] = data[5];
-          mask[2] = data[6];
-          mask[3] = data[7];
-        } else if (length_code == 127) {
+        } else if (length_code == 126) {
+          unsigned char lenbuf[2];
+          if (bufferevent_read(bev, lenbuf, sizeof(lenbuf)) != 2)
+            return;
+          length |= lenbuf[0];
+          length <<= 8;
+          length |= lenbuf[1];
+          if (bufferevent_read(bev, mask, sizeof(mask)) != 4)
+            return;
+        }/* else if (length_code == 127) {
           index_first_mask = 10;
           mask[0] = data[10];
           mask[1] = data[11];
@@ -247,8 +249,8 @@ void client_readcb(struct bufferevent* bev, void* context) {
           mask[3] = data[13];
         }*/
         char data[length];
+        DEBUG(255, "length = %d", length);
         if (bufferevent_read(bev, data, length) == length) {
-          DEBUG(255, "length: %d", length);
           unsigned int i;
           char buf[BUFSIZ];
           bzero(buf, sizeof(buf));
