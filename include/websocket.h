@@ -45,6 +45,8 @@ void free_websocket(struct websocket* websocket);
 
 struct client;
 
+int handle_handshake(struct client* client, char* line, size_t len);
+
 void decode_websocket(struct bufferevent* bev, struct client* client);
 
 #endif //_WEBSOCKET_H
