@@ -26,10 +26,11 @@
 #include <stdlib.h>
 
 #include <event2/buffer.h>
+#include <ctype.h>
 
 struct client* new_client() {
   struct client* client = malloc(sizeof(struct client));
-  memset(client, 0, sizeof(struct client));
+  bzero(client, sizeof(struct client));
   return client;
 };
 
@@ -47,6 +48,7 @@ static void client_timer(evutil_socket_t fd, short event, void* arg) {
 void process_line(struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
   char buf[65];
+  bzero(buf, sizeof(buf));
   int number;
   struct timeval tv = { 0, 0 };
   if (strcmp(line, "MODULES") == 0)
@@ -111,6 +113,7 @@ void process_line(struct client* client, char* line, size_t len) {
     struct module* module = get_module(buf);
     if (module) {
       char databuf[BUFSIZ];
+      bzero(databuf, sizeof(databuf));
       if (update_value(module, databuf, sizeof(databuf)))
         client_send_data(client, "%s: %s", module->name, databuf);
     };
@@ -121,6 +124,7 @@ void process_line(struct client* client, char* line, size_t len) {
     event_add(client->timer, &tv);
   } else {
     char bigbuf[1025];
+    bzero(bigbuf, sizeof(bigbuf));
     if (!client->websocket) {
       int major, minor;
       if (sscanf(line, "GET / HTTP/%d.%d", &major, &minor) == 2) {
@@ -163,11 +167,13 @@ void process_line(struct client* client, char* line, size_t len) {
 void client_send_data(struct client* client, char* line, ...) {
   if (client->websocket && client->websocket->connected) {
     char data[BUFSIZ];
+    bzero(data, sizeof(data));
     va_list arg;
     va_start(arg, line);
     size_t length = vsnprintf(data, sizeof(data), line, arg);
     va_end(arg);
     unsigned char frame[BUFSIZ];
+    bzero(frame, sizeof(frame));
     int data_start_index;
     frame[0] = 129;
     if (length <= 125) {
@@ -207,27 +213,28 @@ void client_send_data(struct client* client, char* line, ...) {
 
 void client_readcb(struct bufferevent* bev, void* context) {
   struct client* client = context;
+  struct evbuffer* input = bufferevent_get_input(bev);
   if (client->websocket && client->websocket->connected) {
-    char data[BUFSIZ];
-    size_t read_bytes = bufferevent_read(bev, &data, sizeof(data));
-    if (read_bytes) {
-      if (((unsigned char) data[0]) == 136) /* Disconnected */
+    if (evbuffer_get_length(input) <= 2)
+      return;
+    char header[2];
+    size_t read_bytes = bufferevent_read(bev, header, sizeof(header));
+    if (read_bytes == 2) {
+      if (((unsigned char) header[0]) == 136) /* Disconnected */
         client_eventcb(bev, BEV_FINISHED, context);
-      else {
+      else if ((unsigned char) header[0] == 129) {
         unsigned int length_code = 0;
-        unsigned int packet_length = 0;
-        int index_first_mask = 0;
-        int index_first_data_byte = 0;
+        unsigned int length = 0;
         unsigned char mask[4];
-        length_code = ((unsigned char) data[1]) & 127;
+        bzero(mask, sizeof(mask));
+        length_code = ((unsigned char) header[1]) & 127;
         if (length_code <= 125) {
-          index_first_mask = 2;
-          mask[0] = data[2];
-          mask[1] = data[3];
-          mask[2] = data[4];
-          mask[3] = data[5];
-        } else if (length_code == 126) {
+          length = length_code;
+          if (bufferevent_read(bev, mask, sizeof(mask)) != 4)
+            return;
+        }/* else if (length_code == 126) {
           index_first_mask = 4;
+          length = 126;
           mask[0] = data[4];
           mask[1] = data[5];
           mask[2] = data[6];
@@ -238,19 +245,22 @@ void client_readcb(struct bufferevent* bev, void* context) {
           mask[1] = data[11];
           mask[2] = data[12];
           mask[3] = data[13];
+        }*/
+        char data[length];
+        if (bufferevent_read(bev, data, length) == length) {
+          DEBUG(255, "length: %d", length);
+          unsigned int i;
+          char buf[BUFSIZ];
+          bzero(buf, sizeof(buf));
+          for (i = 0; i < length; i++)
+            buf[i] = (unsigned char) data[i] ^ mask[i % 4];
+          process_line(client, buf, length);
+          if (evbuffer_get_length(input) > 2)
+            client_readcb(bev, client);
         }
-        index_first_data_byte = index_first_mask + 4;
-        packet_length = read_bytes - index_first_data_byte;
-        int i, j;
-        char buf[BUFSIZ];
-        memset(buf, 0, sizeof(buf));
-        for (i = index_first_data_byte, j = 0; i < read_bytes; i++, j++)
-          buf[j] = (unsigned char) data[i] ^ mask[j % 4];
-        process_line(client, buf, packet_length);
       }
     }
   } else {
-    struct evbuffer* input = bufferevent_get_input(bev);
     char* line;
     size_t len;
     while ((line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF))) {
