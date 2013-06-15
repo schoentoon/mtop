@@ -45,4 +45,6 @@ void client_readcb(struct bufferevent* bev, void* context);
 
 void client_eventcb(struct bufferevent* bev, short events, void* context);
 
+void process_line(struct client* client, char* line, size_t len);
+
 #endif //_CLIENT_H

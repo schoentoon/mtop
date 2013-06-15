@@ -18,9 +18,13 @@
 #ifndef _WEBSOCKET_H
 #define _WEBSOCKET_H
 
+#include <event2/bufferevent.h>
+
 #include <sys/types.h>
 
 #define MAGIC_STRING "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+#define MASK_LEN 4
 
 struct websocket {
   char* key;
@@ -28,10 +32,19 @@ struct websocket {
   unsigned char connection_is_upgrade : 1;
   unsigned char correct_version : 1;
   unsigned char connected : 1;
+
+  unsigned char length_code;
+  char mask[MASK_LEN];
+  unsigned char has_mask : 1;
+  size_t length;
 };
 
 struct websocket* new_websocket();
 
 void free_websocket(struct websocket* websocket);
+
+struct client;
+
+void decode_websocket(struct bufferevent* bev, struct client* client);
 
 #endif //_WEBSOCKET_H

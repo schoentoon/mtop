@@ -213,56 +213,10 @@ void client_send_data(struct client* client, char* line, ...) {
 
 void client_readcb(struct bufferevent* bev, void* context) {
   struct client* client = context;
-  struct evbuffer* input = bufferevent_get_input(bev);
-  if (client->websocket && client->websocket->connected) {
-    if (evbuffer_get_length(input) <= 2)
-      return;
-    char header[2];
-    size_t read_bytes = bufferevent_read(bev, header, sizeof(header));
-    if (read_bytes == 2) {
-      if (((unsigned char) header[0]) == 136) /* Disconnected */
-        client_eventcb(bev, BEV_FINISHED, context);
-      else if ((unsigned char) header[0] == 129) {
-        unsigned int length_code = 0;
-        unsigned int length = 0;
-        unsigned char mask[4];
-        bzero(mask, sizeof(mask));
-        length_code = ((unsigned char) header[1]) & 127;
-        if (length_code <= 125) {
-          length = length_code;
-          if (bufferevent_read(bev, mask, sizeof(mask)) != 4)
-            return;
-        } else if (length_code == 126) {
-          unsigned char lenbuf[2];
-          if (bufferevent_read(bev, lenbuf, sizeof(lenbuf)) != 2)
-            return;
-          length |= lenbuf[0];
-          length <<= 8;
-          length |= lenbuf[1];
-          if (bufferevent_read(bev, mask, sizeof(mask)) != 4)
-            return;
-        }/* else if (length_code == 127) {
-          index_first_mask = 10;
-          mask[0] = data[10];
-          mask[1] = data[11];
-          mask[2] = data[12];
-          mask[3] = data[13];
-        }*/
-        char data[length];
-        DEBUG(255, "length = %d", length);
-        if (bufferevent_read(bev, data, length) == length) {
-          unsigned int i;
-          char buf[BUFSIZ];
-          bzero(buf, sizeof(buf));
-          for (i = 0; i < length; i++)
-            buf[i] = (unsigned char) data[i] ^ mask[i % 4];
-          process_line(client, buf, length);
-          if (evbuffer_get_length(input) > 2)
-            client_readcb(bev, client);
-        }
-      }
-    }
-  } else {
+  if (client->websocket && client->websocket->connected)
+    decode_websocket(bev, client);
+  else {
+    struct evbuffer* input = bufferevent_get_input(bev);
     char* line;
     size_t len;
     while ((line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF))) {
