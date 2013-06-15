@@ -39,6 +39,7 @@
       var i;
       for (i = 1; i < split.length; i++)
         doSend("ENABLE " + split[i]);
+      doSend("INTERVAL 5");
     }
   }
   function onError(evt) {
@@ -53,6 +54,7 @@
     pre.style.wordWrap = "break-word";
     pre.innerHTML = message;
     output.appendChild(pre);
+    output.scrollTop = output.scrollHeight;
   }
   function disconnect() {
     if (websocket != null)
@@ -72,5 +74,5 @@
 <h2>WebSocket Test</h2>
 <input type="text" id="sendstuff" onkeydown="if (event.keyCode == 13) sendStuff()"/></br>
 <button onclick="disconnect()" id="disconnect">Disconnect</button></br>
-<div id="output"></div>
+<div id="output" style="overflow:auto; height:500px;"></div>
 </html>
