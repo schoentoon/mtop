@@ -119,7 +119,7 @@ void process_line(struct client* client, char* line, size_t len) {
       event_free(client->timer);
     client->timer = event_new(bufferevent_get_base(client->bev), -1, EV_PERSIST, client_timer, client);
     event_add(client->timer, &tv);
-  } else
+  } else if (!client->websocket || !client->websocket->connected)
     handle_handshake(client, line, len);
 };
 
