@@ -125,41 +125,12 @@ void process_line(struct client* client, char* line, size_t len) {
 
 void client_send_data(struct client* client, char* line, ...) {
   if (client->websocket && client->websocket->connected) {
-    char data[BUFSIZ];
-    bzero(data, sizeof(data));
+    char data[1024*1024];
     va_list arg;
     va_start(arg, line);
     size_t length = vsnprintf(data, sizeof(data), line, arg);
     va_end(arg);
-    unsigned char frame[BUFSIZ];
-    bzero(frame, sizeof(frame));
-    int data_start_index;
-    frame[0] = 129;
-    if (length <= 125) {
-      frame[1] = (unsigned char) length;
-      data_start_index = 2;
-    } else if (length > 125 && length <= 65535) {
-      frame[1] = 126;
-      frame[2] = (unsigned char) ((length >> 8) & 255);
-      frame[3] = (unsigned char) ((length) & 255);
-      data_start_index = 4;
-    } else {
-      frame[1] = 127;
-      frame[2] = (unsigned char) ((length >> 56) & 255);
-      frame[3] = (unsigned char) ((length >> 48) & 255);
-      frame[4] = (unsigned char) ((length >> 40) & 255);
-      frame[5] = (unsigned char) ((length >> 32) & 255);
-      frame[6] = (unsigned char) ((length >> 24) & 255);
-      frame[7] = (unsigned char) ((length >> 16) & 255);
-      frame[8] = (unsigned char) ((length >> 8) & 255);
-      frame[9] = (unsigned char) ((length) & 255);
-      data_start_index = 10;
-    }
-    int i;
-    for (i = 0; i < length; i++)
-      frame[data_start_index + i] = data[i];
-    struct evbuffer* output = bufferevent_get_output(client->bev);
-    evbuffer_add(output, frame, data_start_index + length);
+    encode_and_send_websocket(client, data, length);
   } else {
     struct evbuffer* output = bufferevent_get_output(client->bev);
     va_list arg;
