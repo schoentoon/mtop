@@ -44,7 +44,7 @@ static void client_timer(evutil_socket_t fd, short event, void* arg) {
   };
 };
 
-void process_line(struct client* client, char* line, size_t len) {
+int process_line(struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
   char buf[65];
   struct timeval tv = { 0, 0 };
@@ -71,7 +71,7 @@ void process_line(struct client* client, char* line, size_t len) {
             if (lm->module == em->module) {
               client_send_data(client, "ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
               free(em);
-              return;
+              return 0;
             }
             em->id = lm->id + 1;
             if (!lm->next)
@@ -119,8 +119,23 @@ void process_line(struct client* client, char* line, size_t len) {
       event_free(client->timer);
     client->timer = event_new(bufferevent_get_base(client->bev), -1, EV_PERSIST, client_timer, client);
     event_add(client->timer, &tv);
-  } else if (!client->websocket || !client->websocket->connected)
-    handle_handshake(client, line, len);
+  } else if ((!client->websocket || !client->websocket->connected) && handle_handshake(client, line, len))
+    return 0;
+  else {
+    switch (++client->unknown_command) {
+    case 1:
+      client_send_data(client, "This is not a valid command...");
+      return 0;
+    case 2:
+      client_send_data(client, "I'm warning you, stop that.");
+      return 0;
+    case 3:
+      client_eventcb(client->bev, BEV_ERROR, client);
+      return 1;
+    }
+  }
+  client->unknown_command = 0;
+  return 0;
 };
 
 void client_send_data(struct client* client, char* line, ...) {
@@ -149,8 +164,9 @@ void client_readcb(struct bufferevent* bev, void* context) {
     struct evbuffer* input = bufferevent_get_input(bev);
     char* line;
     size_t len;
-    while ((line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF))) {
-      process_line(client, line, len);
+    int res = 0;
+    while (res == 0 && (line = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF))) {
+      res = process_line(client, line, len);
       free(line);
     };
   }

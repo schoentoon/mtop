@@ -35,6 +35,7 @@ struct client {
   struct enabled_mod* mods;
   struct event* timer;
   struct websocket* websocket;
+  unsigned char unknown_command : 2;
 };
 
 struct client* new_client();
@@ -45,6 +46,6 @@ void client_readcb(struct bufferevent* bev, void* context);
 
 void client_eventcb(struct bufferevent* bev, short events, void* context);
 
-void process_line(struct client* client, char* line, size_t len);
+int process_line(struct client* client, char* line, size_t len);
 
 #endif //_CLIENT_H

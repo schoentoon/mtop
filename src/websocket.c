@@ -87,7 +87,7 @@ int handle_handshake(struct client* client, char* line, size_t len) {
     client->websocket->key = NULL;
   } else
     return -1;
-  return 0;
+  return client->websocket != 0;
 };
 
 void decode_websocket(struct bufferevent* bev, struct client* client) {
@@ -126,7 +126,8 @@ void decode_websocket(struct bufferevent* bev, struct client* client) {
     for (i = 0; i < client->websocket->length; i++)
       buf[i] = data[i] ^ client->websocket->mask[i % 4];
     buf[i] = '\0';
-    process_line(client, buf, client->websocket->length);
+    if (process_line(client, buf, client->websocket->length) != 0)
+      return;
     client->websocket->length_code = 0;
     client->websocket->length = 0;
     client->websocket->has_mask = 0;
