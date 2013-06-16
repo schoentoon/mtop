@@ -139,21 +139,18 @@ int process_line(struct client* client, char* line, size_t len) {
 };
 
 void client_send_data(struct client* client, char* line, ...) {
+  va_list arg;
+  va_start(arg, line);
   if (client->websocket && client->websocket->connected) {
     char data[1024*1024];
-    va_list arg;
-    va_start(arg, line);
     size_t length = vsnprintf(data, sizeof(data), line, arg);
-    va_end(arg);
     encode_and_send_websocket(client, data, length);
   } else {
     struct evbuffer* output = bufferevent_get_output(client->bev);
-    va_list arg;
-    va_start(arg, line);
     evbuffer_add_vprintf(output, line, arg);
-    va_end(arg);
     evbuffer_add(output, "\n", 2);
   }
+  va_end(arg);
 };
 
 void client_readcb(struct bufferevent* bev, void* context) {
