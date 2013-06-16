@@ -90,13 +90,13 @@ int handle_handshake(struct client* client, char* line, size_t len) {
   return client->websocket != 0;
 };
 
-void decode_websocket(struct bufferevent* bev, struct client* client) {
-  struct evbuffer* input = bufferevent_get_input(bev);
+int decode_websocket(struct client* client) {
+  struct evbuffer* input = bufferevent_get_input(client->bev);
   if (client->websocket->length_code == 0 && evbuffer_get_length(input) >= 2) {
     unsigned char header[2];
-    bufferevent_read(bev, header, sizeof(header));
+    bufferevent_read(client->bev, header, sizeof(header));
     if (header[0] == 136) /* Disconnected */
-      client_eventcb(bev, BEV_FINISHED, client);
+      client_eventcb(client->bev, BEV_FINISHED, client);
     else if (header[0] == 129)
       client->websocket->length_code = header[1] & 127;
     else
@@ -107,7 +107,7 @@ void decode_websocket(struct bufferevent* bev, struct client* client) {
       client->websocket->length = client->websocket->length_code;
     else if (client->websocket->length_code == 126) {
       unsigned char lenbuf[2];
-      bufferevent_read(bev, lenbuf, sizeof(lenbuf));
+      bufferevent_read(client->bev, lenbuf, sizeof(lenbuf));
       client->websocket->length |= lenbuf[0];
       client->websocket->length <<= 8;
       client->websocket->length |= lenbuf[1];
@@ -115,29 +115,28 @@ void decode_websocket(struct bufferevent* bev, struct client* client) {
     DEBUG(255, "length = %d", client->websocket->length);
   }
   if (client->websocket->has_mask == 0 && evbuffer_get_length(input) >= 4) {
-    bufferevent_read(bev, client->websocket->mask, sizeof(client->websocket->mask));
+    bufferevent_read(client->bev, client->websocket->mask, sizeof(client->websocket->mask));
     client->websocket->has_mask = 1;
   }
   if (client->websocket->has_mask && evbuffer_get_length(input) >= client->websocket->length) {
     unsigned char data[client->websocket->length + 1];
-    bufferevent_read(bev, data, client->websocket->length);
+    bufferevent_read(client->bev, data, client->websocket->length);
     unsigned int i;
     char buf[client->websocket->length + 1];
     for (i = 0; i < client->websocket->length; i++)
       buf[i] = data[i] ^ client->websocket->mask[i % 4];
     buf[i] = '\0';
-    if (process_line(client, buf, client->websocket->length) != 0)
-      return;
+    int res = process_line(client, buf, client->websocket->length);
     client->websocket->length_code = 0;
     client->websocket->length = 0;
     client->websocket->has_mask = 0;
-    if (evbuffer_get_length(input) > 0)
-      decode_websocket(bev, client);
+    return res;
   }
+  return 1;
 };
 
 void encode_and_send_websocket(struct client* client, char* line, size_t length) {
-  unsigned char frame[BUFSIZ];
+  unsigned char frame[length + 11];
   bzero(frame, sizeof(frame));
   int data_start_index;
   frame[0] = 129;

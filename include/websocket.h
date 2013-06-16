@@ -47,7 +47,7 @@ struct client;
 
 int handle_handshake(struct client* client, char* line, size_t len);
 
-void decode_websocket(struct bufferevent* bev, struct client* client);
+int decode_websocket(struct client* client);
 
 void encode_and_send_websocket(struct client* client, char* line, size_t length);
 

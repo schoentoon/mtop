@@ -155,10 +155,12 @@ void client_send_data(struct client* client, char* line, ...) {
 
 void client_readcb(struct bufferevent* bev, void* context) {
   struct client* client = context;
-  if (client->websocket && client->websocket->connected)
-    decode_websocket(bev, client);
-  else {
-    struct evbuffer* input = bufferevent_get_input(bev);
+  struct evbuffer* input = bufferevent_get_input(bev);
+  if (client->websocket && client->websocket->connected) {
+    int res = 0;
+    while (res == 0 && evbuffer_get_length(input) > 0)
+      res = decode_websocket(client);
+  } else {
     char* line;
     size_t len;
     int res = 0;
