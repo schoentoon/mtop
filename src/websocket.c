@@ -95,9 +95,10 @@ int decode_websocket(struct client* client) {
   if (client->websocket->length_code == 0 && evbuffer_get_length(input) >= 2) {
     unsigned char header[2];
     bufferevent_read(client->bev, header, sizeof(header));
-    if (header[0] == 136) /* Disconnected */
+    if (header[0] == 136) { /* Disconnected */
       client_eventcb(client->bev, BEV_FINISHED, client);
-    else if (header[0] == 129)
+      return 1;
+    } else if (header[0] == 129)
       client->websocket->length_code = header[1] & 127;
     else
       DEBUG(255, "What the hell, header[0] = %d, header[1] = %d", header[0], header[1]);
