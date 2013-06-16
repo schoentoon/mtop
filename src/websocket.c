@@ -119,14 +119,13 @@ int decode_websocket(struct client* client) {
     client->websocket->has_mask = 1;
   }
   if (client->websocket->has_mask && evbuffer_get_length(input) >= client->websocket->length) {
-    unsigned char data[client->websocket->length + 1];
+    char data[client->websocket->length + 1];
     bufferevent_read(client->bev, data, client->websocket->length);
     unsigned int i;
-    char buf[client->websocket->length + 1];
     for (i = 0; i < client->websocket->length; i++)
-      buf[i] = data[i] ^ client->websocket->mask[i % 4];
-    buf[i] = '\0';
-    int res = process_line(client, buf, client->websocket->length);
+      data[i] = (unsigned char) data[i] ^ client->websocket->mask[i % 4];
+    data[i] = '\0';
+    int res = process_line(client, data, client->websocket->length);
     client->websocket->length_code = 0;
     client->websocket->length = 0;
     client->websocket->has_mask = 0;
