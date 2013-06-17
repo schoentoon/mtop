@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <event2/event.h>
 #include <event2/buffer.h>
 
 struct websocket* new_websocket() {
@@ -46,7 +47,8 @@ int handle_handshake(struct client* client, char* line, size_t len) {
   int number;
   if (!client->websocket) {
     int major, minor;
-    if (sscanf(line, "GET / HTTP/%d.%d", &major, &minor) == 2) {
+    if (sscanf(line, "GET / HTTP/%d.%d", &major, &minor) == 2
+      || sscanf(line, "GET /%*s HTTP/%d.%d", &major, &minor) == 2) {
       if (major >= 1 && minor >= 1)
         client->websocket = new_websocket();
       else {
@@ -62,29 +64,37 @@ int handle_handshake(struct client* client, char* line, size_t len) {
     client->websocket->key = strdup(buf);
   else if (sscanf(line, "Sec-WebSocket-Version: %d", &number) == 1 && number == 13)
     client->websocket->correct_version = 1;
-  else if (len == 0
-    && client->websocket->has_upgrade
-    && client->websocket->connection_is_upgrade
-    && client->websocket->correct_version
-    && client->websocket->key) {
-    SHA_CTX c;
-    unsigned char *base64_encoded;
-    unsigned char raw[SHA1_LEN];
-    size_t out_len;
-    SHA1_Init(&c);
-    char keybuf[BUFSIZ];
-    snprintf(keybuf, sizeof(keybuf), "%s%s", client->websocket->key, MAGIC_STRING);
-    SHA1_Update(&c, keybuf, strlen(keybuf));
-    SHA1_Final(raw, &c);
-    base64_encoded = base64_encode((unsigned char*) raw, SHA1_LEN, &out_len);
-    struct evbuffer* output = bufferevent_get_output(client->bev);
-    evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n"
-                                "Upgrade: websocket\r\n"
-                                "Connection: Upgrade\r\n"
-                                "Sec-WebSocket-Accept: %s\r\n\r\n", base64_encoded);
-    client->websocket->connected = 1;
-    free(client->websocket->key);
-    client->websocket->key = NULL;
+  else if (len == 0) {
+    if (client->websocket->has_upgrade
+      && client->websocket->connection_is_upgrade
+      && client->websocket->correct_version
+      && client->websocket->key) {
+      SHA_CTX c;
+      unsigned char *base64_encoded;
+      unsigned char raw[SHA1_LEN];
+      size_t out_len;
+      SHA1_Init(&c);
+      char keybuf[BUFSIZ];
+      snprintf(keybuf, sizeof(keybuf), "%s%s", client->websocket->key, MAGIC_STRING);
+      SHA1_Update(&c, keybuf, strlen(keybuf));
+      SHA1_Final(raw, &c);
+      base64_encoded = base64_encode((unsigned char*) raw, SHA1_LEN, &out_len);
+      struct evbuffer* output = bufferevent_get_output(client->bev);
+      evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n"
+                                  "Upgrade: websocket\r\n"
+                                  "Connection: Upgrade\r\n"
+                                  "Sec-WebSocket-Accept: %s\r\n\r\n", base64_encoded);
+      client->websocket->connected = 1;
+      free(client->websocket->key);
+      client->websocket->key = NULL;
+    } else {
+      struct evbuffer* output = bufferevent_get_output(client->bev);
+      evbuffer_add_printf(output, "HTTP/1.1 404 This is a WebSocket endpoint\r\n"
+                                  "Content-Length: 29\r\n\r\n"
+                                  "This is a WebSocket endpoint.");
+      bufferevent_setcb(client->bev, client_readcb, client_disconnect_after_write, client_eventcb, client);
+      bufferevent_enable(client->bev, EV_READ|EV_WRITE);
+    }
   } else
     return -1;
   return client->websocket != 0;
