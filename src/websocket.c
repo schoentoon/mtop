@@ -47,13 +47,13 @@ int handle_handshake(struct client* client, char* line, size_t len) {
   int number;
   if (!client->websocket) {
     int major, minor;
-    if (sscanf(line, "GET / HTTP/%d.%d", &major, &minor) == 2
-      || sscanf(line, "GET /%*s HTTP/%d.%d", &major, &minor) == 2) {
-      if (major >= 1 && minor >= 1)
-        client->websocket = new_websocket();
-      else {
-        struct evbuffer* output = bufferevent_get_output(client->bev);
-        evbuffer_add_printf(output, "HTTP/%d.%d 500 Must be at least HTTP 1.1\r\n\r\n", major, minor);
+    if (sscanf(line, "%32s / HTTP/%d.%d", buf, &major, &minor) == 3
+      || sscanf(line, "%32s /%*s HTTP/%d.%d", buf, &major, &minor) == 3) {
+      client->websocket = new_websocket();
+      if (major >= 1 && minor >= 1) {
+        client->websocket->is_http_1_1 = 1;
+        if (strcasecmp(buf, "GET") == 0)
+          client->websocket->is_get = 1;
       }
     }
   } else if (sscanf(line, "Upgrade: %1024s", buf) == 1 && strstr(buf, "websocket"))
@@ -68,7 +68,9 @@ int handle_handshake(struct client* client, char* line, size_t len) {
     if (client->websocket->has_upgrade
       && client->websocket->connection_is_upgrade
       && client->websocket->correct_version
-      && client->websocket->key) {
+      && client->websocket->key
+      && client->websocket->is_get
+      && client->websocket->is_http_1_1) {
       SHA_CTX c;
       unsigned char *base64_encoded;
       unsigned char raw[SHA1_LEN];

@@ -28,6 +28,8 @@
 
 struct websocket {
   char* key;
+  unsigned char is_get : 1;
+  unsigned char is_http_1_1 : 1;
   unsigned char has_upgrade : 1;
   unsigned char connection_is_upgrade : 1;
   unsigned char correct_version : 1;
