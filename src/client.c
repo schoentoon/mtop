@@ -191,5 +191,7 @@ void client_eventcb(struct bufferevent* bev, short events, void* context) {
 };
 
 void client_disconnect_after_write(struct bufferevent* bev, void* context) {
-  client_eventcb(bev, BEV_ERROR, context);
+  struct evbuffer* output = bufferevent_get_output(bev);
+  if (evbuffer_get_length(output) == 0)
+    client_eventcb(bev, BEV_ERROR, context);
 };
