@@ -43,7 +43,7 @@ void free_websocket(struct websocket* websocket) {
 };
 
 int handle_handshake(struct client* client, char* line, size_t len) {
-  char buf[BUFSIZ];
+  char buf[1025];
   int number;
   if (!client->websocket) {
     int major, minor;
