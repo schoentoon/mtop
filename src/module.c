@@ -72,6 +72,9 @@ struct module* new_module(char* filename, char* alias) {
     break;
   }
   };
+  mod_max_interval* max_interval_func = dlsym(handle, "maxInterval");
+  if (max_interval_func)
+    module->max_interval = max_interval_func(module->context);
   if (!alias) {
     mod_list_aliases* list_aliases_func = dlsym(handle, "listAliases");
     if (list_aliases_func) {
@@ -110,6 +113,16 @@ void free_module(struct module* module) {
 };
 
 size_t update_value(struct module* module, char* buf, size_t buf_size, struct client* client) {
+  if (module->max_interval) {
+    time_t now = time(NULL);
+    if (now - module->last_update <= module->max_interval) {
+      switch (module->type) {
+      case FLOAT:
+        return snprintf(buf, buf_size, "%.*f", client->precision, *((float*) module->module_data));
+      }
+    }
+    module->last_update = now;
+  }
   switch (module->type) {
   case FLOAT: {
     mod_get_float* mod_float = (mod_get_float*) module->update_function;

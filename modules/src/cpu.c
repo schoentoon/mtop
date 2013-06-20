@@ -103,3 +103,7 @@ float getFloat(void* context) {
   cpudata->totalTime = total;
   return output;
 };
+
+unsigned char maxInterval(void* context) {
+  return 1;
+}

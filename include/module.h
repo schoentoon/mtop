@@ -18,6 +18,7 @@
 #ifndef _MODULE_H
 #define _MODULE_H
 
+#include <time.h>
 #include <stddef.h>
 
 typedef enum {
@@ -31,6 +32,8 @@ struct module {
   module_type type;
   void* module_data;
   void* update_function;
+  unsigned char max_interval;
+  time_t last_update;
   struct module* next;
 };
 
@@ -39,6 +42,7 @@ typedef void mod_free_context(void* context);
 typedef char* mod_name_function();
 typedef module_type mod_type_function(void* context);
 typedef char** mod_list_aliases();
+typedef unsigned char mod_max_interval(void* context);
 
 typedef float mod_get_float(void* context);
 
