@@ -17,6 +17,7 @@
 
 #include "module.h"
 
+#include "client.h"
 #include "debug.h"
 
 #include <stdio.h>
@@ -108,13 +109,13 @@ void free_module(struct module* module) {
   }
 };
 
-size_t update_value(struct module* module, char* buf, size_t buf_size) {
+size_t update_value(struct module* module, char* buf, size_t buf_size, struct client* client) {
   switch (module->type) {
   case FLOAT: {
     mod_get_float* mod_float = (mod_get_float*) module->update_function;
     float tmp = mod_float(module->context);
     *((float*) module->module_data) = tmp;
-    return snprintf(buf, buf_size, "%f", tmp);
+    return snprintf(buf, buf_size, "%.*f", client->precision, tmp);
   };
   };
 };

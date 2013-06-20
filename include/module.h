@@ -46,6 +46,8 @@ struct module* new_module(char* filename, char* alias);
 
 void free_module(struct module* module);
 
-size_t update_value(struct module* module, char* buf, size_t buf_size);
+struct client;
+
+size_t update_value(struct module* module, char* buf, size_t buf_size, struct client* client);
 
 #endif //_MODULE_H

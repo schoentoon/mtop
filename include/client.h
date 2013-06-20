@@ -35,6 +35,7 @@ struct client {
   struct enabled_mod* mods;
   struct event* timer;
   struct websocket* websocket;
+  unsigned char precision;
   unsigned char unknown_command : 2;
 };
 

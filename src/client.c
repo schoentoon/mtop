@@ -30,6 +30,7 @@
 struct client* new_client() {
   struct client* client = malloc(sizeof(struct client));
   bzero(client, sizeof(struct client));
+  client->precision = 2;
   return client;
 };
 
@@ -38,7 +39,7 @@ static void client_timer(evutil_socket_t fd, short event, void* arg) {
   struct enabled_mod* lm = client->mods;
   while (lm) {
     char databuf[BUFSIZ];
-    if (update_value(lm->module, databuf, sizeof(databuf)))
+    if (update_value(lm->module, databuf, sizeof(databuf), client))
       client_send_data(client, "%s: %s", lm->module->name, databuf);
     lm = lm->next;
   };
@@ -47,6 +48,7 @@ static void client_timer(evutil_socket_t fd, short event, void* arg) {
 int process_line(struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
   char buf[65];
+  int number;
   struct timeval tv = { 0, 0 };
   if (strcmp(line, "MODULES") == 0)
     send_loaded_modules_info(client);
@@ -111,7 +113,7 @@ int process_line(struct client* client, char* line, size_t len) {
     if (module) {
       char databuf[BUFSIZ];
       bzero(databuf, sizeof(databuf));
-      if (update_value(module, databuf, sizeof(databuf)))
+      if (update_value(module, databuf, sizeof(databuf), client))
         client_send_data(client, "%s: %s", module->name, databuf);
     };
   } else if (sscanf(line, "INTERVAL %ld.%ld", &tv.tv_sec, &tv.tv_usec) == 2 || sscanf(line, "INTERVAL %ld", &tv.tv_sec) == 1) {
@@ -119,6 +121,9 @@ int process_line(struct client* client, char* line, size_t len) {
       event_free(client->timer);
     client->timer = event_new(bufferevent_get_base(client->bev), -1, EV_PERSIST, client_timer, client);
     event_add(client->timer, &tv);
+  } else if (sscanf(line, "PRECISION %d", &number) == 1) {
+    if (number >= 0 && number <= 255)
+      client->precision = number;
   } else if ((!client->websocket || !client->websocket->connected) && handle_handshake(client, line, len))
     return 0;
   else {
