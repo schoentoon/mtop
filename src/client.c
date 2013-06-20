@@ -114,7 +114,7 @@ int process_line(struct client* client, char* line, size_t len) {
       if (update_value(module, databuf, sizeof(databuf)))
         client_send_data(client, "%s: %s", module->name, databuf);
     };
-  } else if (sscanf(line, "INTERVAL %ld:%ld", &tv.tv_sec, &tv.tv_usec) == 2 || sscanf(line, "INTERVAL %ld", &tv.tv_sec) == 1) {
+  } else if (sscanf(line, "INTERVAL %ld.%ld", &tv.tv_sec, &tv.tv_usec) == 2 || sscanf(line, "INTERVAL %ld", &tv.tv_sec) == 1) {
     if (client->timer)
       event_free(client->timer);
     client->timer = event_new(bufferevent_get_base(client->bev), -1, EV_PERSIST, client_timer, client);
