@@ -48,6 +48,7 @@ static void client_timer(evutil_socket_t fd, short event, void* arg) {
 int process_line(struct client* client, char* line, size_t len) {
   DEBUG(255, "Raw line: %s", line);
   char buf[65];
+  double double_number;
   int number;
   struct timeval tv = { 0, 0 };
   if (strcmp(line, "MODULES") == 0)
@@ -116,9 +117,15 @@ int process_line(struct client* client, char* line, size_t len) {
       if (update_value(module, databuf, sizeof(databuf), client))
         client_send_data(client, "%s: %s", module->name, databuf);
     };
-  } else if (sscanf(line, "INTERVAL %ld.%ld", &tv.tv_sec, &tv.tv_usec) == 2 || sscanf(line, "INTERVAL %ld", &tv.tv_sec) == 1) {
+  } else if (sscanf(line, "INTERVAL %lf", &double_number) == 1) {
     if (client->timer)
       event_free(client->timer);
+    if (double_number < 0) {
+      client->timer = NULL;
+      return 0;
+    }
+    tv.tv_sec = (long) double_number;
+    tv.tv_usec = (long) ((double_number - (double) tv.tv_sec) * 1000000.0) ;
     client->timer = event_new(bufferevent_get_base(client->bev), -1, EV_PERSIST, client_timer, client);
     event_add(client->timer, &tv);
   } else if (sscanf(line, "PRECISION %d", &number) == 1) {
