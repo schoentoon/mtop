@@ -131,6 +131,8 @@ int process_line(struct client* client, char* line, size_t len) {
   } else if (sscanf(line, "PRECISION %d", &number) == 1) {
     if (number >= 0 && number <= 255)
       client->precision = number;
+    else
+      client_send_data(client, "ERROR: Precision %d is out of the valid range (0-255)", number);
   } else if ((!client->websocket || !client->websocket->connected) && handle_handshake(client, line, len))
     return 0;
   else {
