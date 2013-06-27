@@ -138,10 +138,10 @@ int process_line(struct client* client, char* line, size_t len) {
   else {
     switch (++client->unknown_command) {
     case 1:
-      client_send_data(client, "This is not a valid command...");
+      client_send_data(client, "ERROR: This is not a valid command...");
       return 0;
     case 2:
-      client_send_data(client, "I'm warning you, stop that.");
+      client_send_data(client, "ERROR: I'm warning you, stop that.");
       return 0;
     case 3:
       client_eventcb(client->bev, BEV_ERROR, client);
