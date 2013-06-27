@@ -69,7 +69,7 @@ int parse_config(char* config_file) {
         }
       }
     } else {
-      fprintf(stderr, "Error on line %zd\tCould not be parsed correctly.\n", line_count);
+      fprintf(stderr, "Error on line %ud\tCould not be parsed correctly.\n", line_count);
       return 1;
     }
   };

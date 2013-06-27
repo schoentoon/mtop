@@ -32,6 +32,7 @@ char* module_type_to_string(module_type type) {
   case FLOAT_RANGE:
     return "FLOAT_RANGE";
   }
+  return ""; /* gcc is stupid after all. */
 }
 
 struct module* new_module(char* filename, char* alias) {
@@ -185,4 +186,5 @@ size_t update_value(struct module* module, char* buf, size_t buf_size, struct cl
     return snprintf(buf, buf_size, "%.*f", client->precision, new_value);
   }
   };
+  return 0; /* gcc is stupid after all. */
 };
