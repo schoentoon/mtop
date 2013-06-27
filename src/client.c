@@ -62,7 +62,7 @@ int process_line(struct client* client, char* line, size_t len) {
       em->next = NULL;
       if (!client->mods) {
         client->mods = em;
-        client_send_data(client, "LOADED: %s %s ID %d %s", module_type_to_string(em->module->type), buf, em->id, em->module->extra_info);
+        client_send_data(client, "LOADED: %s %s ID %d", module_type_to_string(em->module->type), buf, em->id);
       } else {
         em->id++;
         struct enabled_mod* lm = client->mods;
@@ -82,7 +82,7 @@ int process_line(struct client* client, char* line, size_t len) {
             lm = lm->next;
           };
           lm->next = em;
-          client_send_data(client, "LOADED: %s %s ID %d %s", module_type_to_string(em->module->type), buf, em->id, em->module->extra_info);
+          client_send_data(client, "LOADED: %s %s ID %d", module_type_to_string(em->module->type), buf, em->id);
         }
       }
     } else

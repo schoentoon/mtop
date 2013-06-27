@@ -37,7 +37,6 @@ struct module {
   void* update_function;
   unsigned char max_interval;
   time_t last_update;
-  char* extra_info;
   struct module* next;
 };
 
@@ -53,6 +52,8 @@ struct float_range_data {
   float current_float;
   float max_value;
   float min_value;
+  mod_get_min_float* mod_min_func;
+  mod_get_max_float* mod_max_func;
 };
 
 typedef void* mod_create_context(char* name);

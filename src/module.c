@@ -79,8 +79,6 @@ struct module* new_module(char* filename, char* alias) {
     }
     module->update_function = mod_float;
     module->module_data = malloc(sizeof(float));
-    module->extra_info = malloc(sizeof(char*));
-    module->extra_info[0] = '\0';
     break;
   }
   case FLOAT_RANGE: {
@@ -105,11 +103,10 @@ struct module* new_module(char* filename, char* alias) {
     }
     module->module_data = malloc(sizeof(struct float_range_data));
     struct float_range_data* data = module->module_data;
+    data->mod_max_func = mod_max_float;
+    data->mod_min_func = mod_min_float;
     data->max_value = mod_max_float(module->context);
     data->min_value = mod_min_float(module->context);
-    char buf[BUFSIZ];
-    snprintf(buf, sizeof(buf), "%.6f/%.6f", data->min_value, data->max_value);
-    module->extra_info = strdup(buf);
     break;
   }
   };
@@ -150,7 +147,6 @@ void free_module(struct module* module) {
       free(module->module_data);
       break;
     };
-    free(module->extra_info);
     free(module);
   }
 };
@@ -180,10 +176,15 @@ size_t update_value(struct module* module, char* buf, size_t buf_size, struct cl
   case FLOAT_RANGE: {
     mod_get_float* mod_float = (mod_get_float*) module->update_function;
     struct float_range_data* data = module->module_data;
+    data->min_value = data->mod_min_func(module->context);
+    data->max_value = data->mod_max_func(module->context);
     float new_value = mod_float(module->context);
     if (new_value >= data->min_value && new_value <= data->max_value)
       data->current_float = new_value;
-    return snprintf(buf, buf_size, "%.*f", client->precision, new_value);
+    return snprintf(buf, buf_size, "%.*f/%.*f/%.*f"
+                   ,client->precision, data->min_value
+                   ,client->precision, new_value
+                   ,client->precision, data->max_value);
   }
   };
   return 0; /* gcc is stupid after all. */
