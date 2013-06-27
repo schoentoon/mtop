@@ -78,7 +78,15 @@ void freeContext(void* context) {
 };
 
 module_type getType(void* context) {
-  return FLOAT;
+  return FLOAT_RANGE;
+};
+
+float getMaxFloat(void* context) {
+  return 100.0f;
+};
+
+float getMinFloat(void* context) {
+  return 0.0f;
 };
 
 float getFloat(void* context) {

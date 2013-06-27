@@ -25,6 +25,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+char* module_type_to_string(module_type type) {
+  switch (type) {
+  case FLOAT:
+    return "FLOAT";
+  case FLOAT_RANGE:
+    return "FLOAT_RANGE";
+  }
+}
+
 struct module* new_module(char* filename, char* alias) {
   DEBUG(100, "Loading %s with alias %s", filename, alias);
   void* handle = dlopen(filename, RTLD_LAZY);
@@ -56,7 +65,7 @@ struct module* new_module(char* filename, char* alias) {
     module->context = create_context(module->name);
     mod_free_context* free_context = dlsym(handle, "freeContext");
     if (!free_context)
-      fprintf(stderr, "WARNING, you seem to have a createContext() function but no freeContext() function, you're possibly leaking memory.\n");
+      fprintf(stderr, "WARNING, you seem to have a createContext() function but no freeContext() function, you're possibly leaking memory.\n\t%s\n", dlerror());
   }
   module->type = type(module->context);
   switch (module->type) {
@@ -69,6 +78,37 @@ struct module* new_module(char* filename, char* alias) {
     }
     module->update_function = mod_float;
     module->module_data = malloc(sizeof(float));
+    module->extra_info = malloc(sizeof(char*));
+    module->extra_info[0] = '\0';
+    break;
+  }
+  case FLOAT_RANGE: {
+    mod_get_float* mod_float = dlsym(handle, "getFloat");
+    if (!mod_float) {
+      fprintf(stderr, "%s\n", dlerror());
+      free_module(module);
+      return NULL;
+    }
+    module->update_function = mod_float;
+    mod_get_max_float* mod_max_float = dlsym(handle, "getMaxFloat");
+    if (!mod_max_float) {
+      fprintf(stderr, "%s\n", dlerror());
+      free_module(module);
+      return NULL;
+    }
+    mod_get_min_float* mod_min_float = dlsym(handle, "getMinFloat");
+    if (!mod_min_float) {
+      fprintf(stderr, "%s\n", dlerror());
+      free_module(module);
+      return NULL;
+    }
+    module->module_data = malloc(sizeof(struct float_range_data));
+    struct float_range_data* data = module->module_data;
+    data->max_value = mod_max_float(module->context);
+    data->min_value = mod_min_float(module->context);
+    char buf[BUFSIZ];
+    snprintf(buf, sizeof(buf), "%.6f/%.6f", data->min_value, data->max_value);
+    module->extra_info = strdup(buf);
     break;
   }
   };
@@ -105,9 +145,11 @@ void free_module(struct module* module) {
     free(module->name);
     switch (module->type) {
     case FLOAT:
+    case FLOAT_RANGE:
       free(module->module_data);
       break;
     };
+    free(module->extra_info);
     free(module);
   }
 };
@@ -119,6 +161,10 @@ size_t update_value(struct module* module, char* buf, size_t buf_size, struct cl
       switch (module->type) {
       case FLOAT:
         return snprintf(buf, buf_size, "%.*f", client->precision, *((float*) module->module_data));
+      case FLOAT_RANGE: {
+        struct float_range_data* data = module->module_data;
+        return snprintf(buf, buf_size, "%.*f", client->precision, data->current_float);
+      }
       }
     }
     module->last_update = now;
@@ -126,9 +172,17 @@ size_t update_value(struct module* module, char* buf, size_t buf_size, struct cl
   switch (module->type) {
   case FLOAT: {
     mod_get_float* mod_float = (mod_get_float*) module->update_function;
-    float tmp = mod_float(module->context);
-    *((float*) module->module_data) = tmp;
-    return snprintf(buf, buf_size, "%.*f", client->precision, tmp);
+    float new_value = mod_float(module->context);
+    *((float*) module->module_data) = new_value;
+    return snprintf(buf, buf_size, "%.*f", client->precision, new_value);
   };
+  case FLOAT_RANGE: {
+    mod_get_float* mod_float = (mod_get_float*) module->update_function;
+    struct float_range_data* data = module->module_data;
+    float new_value = mod_float(module->context);
+    if (new_value >= data->min_value && new_value <= data->max_value)
+      data->current_float = new_value;
+    return snprintf(buf, buf_size, "%.*f", client->precision, new_value);
+  }
   };
 };

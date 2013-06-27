@@ -62,17 +62,17 @@ int process_line(struct client* client, char* line, size_t len) {
       em->next = NULL;
       if (!client->mods) {
         client->mods = em;
-        client_send_data(client, "LOADED %s WITH ID %d", buf, em->id);
+        client_send_data(client, "LOADED: %s %s ID %d %s", module_type_to_string(em->module->type), buf, em->id, em->module->extra_info);
       } else {
         em->id++;
         struct enabled_mod* lm = client->mods;
         if (lm->module == em->module) {
-          client_send_data(client, "ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
+          client_send_data(client, "ERROR: ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
           free(em);
         } else {
           while (lm) {
             if (lm->module == em->module) {
-              client_send_data(client, "ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
+              client_send_data(client, "ERROR: ALREADY LOADED %s WITH ID %d", em->module->name, em->id);
               free(em);
               return 0;
             }
@@ -82,25 +82,25 @@ int process_line(struct client* client, char* line, size_t len) {
             lm = lm->next;
           };
           lm->next = em;
-          client_send_data(client, "LOADED %s WITH ID %d", buf, em->id);
+          client_send_data(client, "LOADED: %s %s ID %d %s", module_type_to_string(em->module->type), buf, em->id, em->module->extra_info);
         }
       }
     } else
-      client_send_data(client, "UNABLE TO LOAD %s", buf);
+      client_send_data(client, "ERROR: UNABLE TO LOAD %s", buf);
   } else if (sscanf(line, "DISABLE %64s", buf) == 1) {
     struct module* module = get_module(buf);
     if (module) {
       struct enabled_mod* lm = client->mods;
       if (lm->module == module) {
         client->mods = lm->next;
-        client_send_data(client, "DISABLED %s WITH ID %d", buf, lm->id);
+        client_send_data(client, "DISABLED: %s WITH ID %d", buf, lm->id);
         free(lm);
       } else {
         while (lm->next) {
           if (lm->next->module == module) {
             struct enabled_mod* to_free = lm->next;
             lm->next = lm->next->next;
-            client_send_data(client, "DISABLED %s WITH ID %d", buf, to_free->id);
+            client_send_data(client, "DISABLED: %s WITH ID %d", buf, to_free->id);
             free(to_free);
             break;
           }
@@ -108,7 +108,7 @@ int process_line(struct client* client, char* line, size_t len) {
         };
       }
     } else
-      client_send_data(client, "MODULE %s DOESN'T EXIST", buf);
+      client_send_data(client, "ERROR: MODULE %s DOESN'T EXIST", buf);
   } else if (sscanf(line, "PULL %64s", buf) == 1) {
     struct module* module = get_module(buf);
     if (module) {

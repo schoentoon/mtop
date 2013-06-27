@@ -22,8 +22,11 @@
 #include <stddef.h>
 
 typedef enum {
-  FLOAT
+  FLOAT,
+  FLOAT_RANGE
 } module_type;
+
+char* module_type_to_string(module_type type);
 
 struct module {
   void* handle;
@@ -34,7 +37,22 @@ struct module {
   void* update_function;
   unsigned char max_interval;
   time_t last_update;
+  char* extra_info;
   struct module* next;
+};
+
+/* FLOAT */
+typedef float mod_get_float(void* context);
+
+/* FLOAT_RANGE includes mod_get_float(void*) */
+
+typedef float mod_get_max_float(void* context);
+typedef float mod_get_min_float(void* context);
+
+struct float_range_data {
+  float current_float;
+  float max_value;
+  float min_value;
 };
 
 typedef void* mod_create_context(char* name);
@@ -43,8 +61,6 @@ typedef char* mod_name_function();
 typedef module_type mod_type_function(void* context);
 typedef char** mod_list_aliases();
 typedef unsigned char mod_max_interval(void* context);
-
-typedef float mod_get_float(void* context);
 
 struct module* new_module(char* filename, char* alias);
 
