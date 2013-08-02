@@ -113,7 +113,6 @@ int process_line(struct client* client, char* line, size_t len) {
     struct module* module = get_module(buf);
     if (module) {
       char databuf[BUFSIZ];
-      bzero(databuf, sizeof(databuf));
       if (update_value(module, databuf, sizeof(databuf), client))
         client_send_data(client, "%s: %s", module->name, databuf);
     };

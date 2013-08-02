@@ -77,8 +77,17 @@ struct module* new_module(char* filename, char* alias) {
       free_module(module);
       return NULL;
     }
+    mod_get_array_length* mod_array_length_func = dlsym(handle, "getArrayLength");
+    if (mod_array_length_func)
+      module->array_length = mod_array_length_func(module->context);
+    else
+      module->array_length = 1;
     module->update_function = mod_float;
-    module->module_data = malloc(sizeof(float));
+    module->module_data = calloc(module->array_length + 1, sizeof(float));
+    size_t i;
+    for (i = 0; i < module->array_length; i++)
+      ((float**) module->module_data)[i] = malloc(sizeof(float));
+    ((float**) module->module_data)[module->array_length] = NULL;
     break;
   }
   case FLOAT_RANGE: {
@@ -101,12 +110,22 @@ struct module* new_module(char* filename, char* alias) {
       free_module(module);
       return NULL;
     }
-    module->module_data = malloc(sizeof(struct float_range_data));
-    struct float_range_data* data = module->module_data;
-    data->mod_max_func = mod_max_float;
-    data->mod_min_func = mod_min_float;
-    data->max_value = mod_max_float(module->context);
-    data->min_value = mod_min_float(module->context);
+    mod_get_array_length* mod_array_length_func = dlsym(handle, "getArrayLength");
+    if (mod_array_length_func)
+      module->array_length = mod_array_length_func(module->context);
+    else
+      module->array_length = 1;
+    module->module_data = calloc(module->array_length + 1, sizeof(struct float_range_data));
+    ((struct float_range_data**) module->module_data)[module->array_length] = NULL;
+    size_t i;
+    for (i = 0; i < module->array_length; i++) {
+      struct float_range_data* data = malloc(sizeof(struct float_range_data));
+      ((struct float_range_data**) module->module_data)[i] = data;
+      data->mod_max_func = mod_max_float;
+      data->mod_min_func = mod_min_float;
+      data->max_value = mod_max_float(module->context, i);
+      data->min_value = mod_min_float(module->context, i);
+    }
     break;
   }
   };
@@ -137,7 +156,8 @@ void free_module(struct module* module) {
   if (module) {
     if (module->context) {
       mod_free_context* free_context = dlsym(module->handle, "freeContext");
-      free_context(module->context);
+      if (free_context)
+        free_context(module->context);
     }
     dlclose(module->handle);
     free(module->name);
@@ -151,40 +171,63 @@ void free_module(struct module* module) {
   }
 };
 
+size_t print_value(struct module* module, char* buf, size_t buf_size, struct client* client) {
+  char* s = buf;
+  char* end = buf + buf_size;
+  switch (module->type) {
+  case FLOAT: {
+    size_t i;
+    for (i = 0; i < module->array_length; i++) {
+      s += snprintf(s, end - s, "%.*f", client->precision, *((float**) module->module_data)[0]);
+      if (i != (module->array_length - 1))
+        s += snprintf(s, end - s, ", ");
+    }
+    return s - buf;
+  }
+  case FLOAT_RANGE: {
+    size_t i;
+    for (i = 0; i < module->array_length; i++) {
+      struct float_range_data* data = ((struct float_range_data**) module->module_data)[i];
+      s += snprintf(s, end - s, "%.*f/%.*f/%.*f"
+                   ,client->precision, data->min_value
+                   ,client->precision, data->current_float
+                   ,client->precision, data->max_value);
+      if (i != (module->array_length - 1))
+        s += snprintf(s, end - s, ", ");
+    }
+    return s - buf;
+  }
+  }
+};
+
 size_t update_value(struct module* module, char* buf, size_t buf_size, struct client* client) {
   if (module->max_interval) {
     time_t now = time(NULL);
-    if (now - module->last_update <= module->max_interval) {
-      switch (module->type) {
-      case FLOAT:
-        return snprintf(buf, buf_size, "%.*f", client->precision, *((float*) module->module_data));
-      case FLOAT_RANGE: {
-        struct float_range_data* data = module->module_data;
-        return snprintf(buf, buf_size, "%.*f", client->precision, data->current_float);
-      }
-      }
-    }
-    module->last_update = now;
+    if (now - module->last_update <= module->max_interval)
+      return print_value(module, buf, buf_size, client);
   }
   switch (module->type) {
   case FLOAT: {
     mod_get_float* mod_float = (mod_get_float*) module->update_function;
-    float new_value = mod_float(module->context);
-    *((float*) module->module_data) = new_value;
-    return snprintf(buf, buf_size, "%.*f", client->precision, new_value);
+    size_t i;
+    for (i = 0; i < module->array_length; i++) {
+      float new_value = mod_float(module->context, i);
+      *(((float**) module->module_data)[i]) = new_value;
+    }
+    return print_value(module, buf, buf_size, client);
   };
   case FLOAT_RANGE: {
     mod_get_float* mod_float = (mod_get_float*) module->update_function;
-    struct float_range_data* data = module->module_data;
-    data->min_value = data->mod_min_func(module->context);
-    data->max_value = data->mod_max_func(module->context);
-    float new_value = mod_float(module->context);
-    if (new_value >= data->min_value && new_value <= data->max_value)
-      data->current_float = new_value;
-    return snprintf(buf, buf_size, "%.*f/%.*f/%.*f"
-                   ,client->precision, data->min_value
-                   ,client->precision, new_value
-                   ,client->precision, data->max_value);
+    size_t i;
+    for (i = 0; i < module->array_length; i++) {
+      struct float_range_data* data = ((struct float_range_data**) module->module_data)[i];
+      data->min_value = data->mod_min_func(module->context, i);
+      data->max_value = data->mod_max_func(module->context, i);
+      float new_value = mod_float(module->context, i);
+      if (new_value >= data->min_value && new_value <= data->max_value)
+        data->current_float = new_value;
+    }
+    return print_value(module, buf, buf_size, client);
   }
   };
   return 0; /* gcc is stupid after all. */

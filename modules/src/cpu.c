@@ -25,6 +25,11 @@
 
 #define PROC_STAT "/proc/stat"
 
+#define USER 0
+#define NICE 1
+#define SYSTEM 2
+#define IDLE 3
+
 char* getName() {
   return "cpu";
 };
@@ -58,18 +63,28 @@ char** listAliases() {
 
 struct CPUData {
   int cpu;
-  unsigned long long loadTime;
+  unsigned long long userTime;
+  unsigned long long niceTime;
+  unsigned long long systemTime;
+  unsigned long long idleTime;
   unsigned long long totalTime;
 };
 
-float getFloat(void* context);
+size_t getArrayLength(void* context) {
+  return 4;
+};
+
+float getFloat(void* context, size_t i);
 
 void* createContext(char* name) {
   struct CPUData* output = malloc(sizeof(struct CPUData));
   memset(output, 0, sizeof(struct CPUData));
   if (sscanf(name, "cpu%d", &output->cpu) != 1)
     output->cpu = -1;
-  getFloat((void*) output); /* Just to fill in load and total */
+  getFloat((void*) output, USER); /* Just to fill in load and total */
+  getFloat((void*) output, NICE);
+  getFloat((void*) output, SYSTEM);
+  getFloat((void*) output, IDLE);
   return output;
 };
 
@@ -81,15 +96,15 @@ module_type getType(void* context) {
   return FLOAT_RANGE;
 };
 
-float getMaxFloat(void* context) {
+float getMaxFloat(void* context, size_t i) {
   return 100.0f;
 };
 
-float getMinFloat(void* context) {
+float getMinFloat(void* context, size_t i) {
   return 0.0f;
 };
 
-float getFloat(void* context) {
+float getFloat(void* context, size_t i) {
   struct CPUData* cpudata = context;
   FILE* stat = fopen(PROC_STAT, "r");
   unsigned long long user, nice, system, idle;
@@ -104,12 +119,28 @@ float getFloat(void* context) {
       while (fgetc(stat) != '\n');
   }
   fclose(stat);
-  unsigned long long load = user + nice + system;
-  unsigned long long total = load + idle;
-  float output = ((float) ((load - cpudata->loadTime) * 100)) / ((float) (total - cpudata->totalTime));
-  cpudata->loadTime = load;
-  cpudata->totalTime = total;
-  return output;
+  unsigned long long total = user + nice + system + idle;
+  float output;
+  switch (i) {
+  case USER:
+    output = ((float) ((user - cpudata->userTime) * 100) / ((float) (total - cpudata->totalTime)));
+    cpudata->userTime = user;
+    return output;
+  case NICE:
+    output = ((float) ((nice - cpudata->niceTime) * 100) / ((float) (total - cpudata->totalTime)));
+    cpudata->niceTime = nice;
+    return output;
+  case SYSTEM:
+    output = ((float) ((system - cpudata->systemTime) * 100) / ((float) (total - cpudata->totalTime)));
+    cpudata->systemTime = system;
+    return output;
+  case IDLE:
+    output = ((float) ((idle - cpudata->idleTime) * 100) / ((float) (total - cpudata->totalTime)));
+    cpudata->idleTime = idle;
+    cpudata->totalTime = total;
+    return output;
+  }
+  return 0.0f;
 };
 
 unsigned char maxInterval(void* context) {

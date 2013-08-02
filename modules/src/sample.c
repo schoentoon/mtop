@@ -25,6 +25,6 @@ module_type getType(void* context) {
   return FLOAT;
 };
 
-float getFloat(void* context) {
+float getFloat(void* context, size_t i) {
   return 0.0;
 };

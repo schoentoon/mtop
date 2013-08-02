@@ -34,19 +34,22 @@ struct module {
   char* name;
   module_type type;
   void* module_data;
+  size_t array_length;
   void* update_function;
   unsigned char max_interval;
   time_t last_update;
   struct module* next;
 };
 
+typedef size_t mod_get_array_length(void* context);
+
 /* FLOAT */
-typedef float mod_get_float(void* context);
+typedef float mod_get_float(void* context, size_t item);
 
 /* FLOAT_RANGE includes mod_get_float(void*) */
 
-typedef float mod_get_max_float(void* context);
-typedef float mod_get_min_float(void* context);
+typedef float mod_get_max_float(void* context, size_t item);
+typedef float mod_get_min_float(void* context, size_t item);
 
 struct float_range_data {
   float current_float;
@@ -70,5 +73,7 @@ void free_module(struct module* module);
 struct client;
 
 size_t update_value(struct module* module, char* buf, size_t buf_size, struct client* client);
+
+size_t print_value(struct module* module, char* buf, size_t buf_size, struct client* client);
 
 #endif //_MODULE_H
