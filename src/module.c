@@ -83,7 +83,7 @@ struct module* new_module(char* filename, char* alias) {
     else
       module->array_length = 1;
     module->update_function = mod_float;
-    module->module_data = calloc(module->array_length + 1, sizeof(float));
+    module->module_data = calloc(module->array_length + 1, sizeof(float*));
     size_t i;
     for (i = 0; i < module->array_length; i++)
       ((float**) module->module_data)[i] = malloc(sizeof(float));
