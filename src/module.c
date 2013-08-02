@@ -197,6 +197,8 @@ size_t print_value(struct module* module, char* buf, size_t buf_size, struct cli
     }
     return s - buf;
   }
+  default:
+    return 0;
   }
 };
 
