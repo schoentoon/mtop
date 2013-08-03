@@ -83,10 +83,7 @@ struct module* new_module(char* filename, char* alias) {
     else
       module->array_length = 1;
     module->update_function = mod_float;
-    module->module_data = calloc(module->array_length, sizeof(float*));
-    size_t i;
-    for (i = 0; i < module->array_length; i++)
-      ((float**) module->module_data)[i] = malloc(sizeof(float));
+    module->module_data = calloc(module->array_length, sizeof(float));
     break;
   }
   case FLOAT_RANGE: {
@@ -160,8 +157,12 @@ void free_module(struct module* module) {
     dlclose(module->handle);
     free(module->name);
     switch (module->type) {
+    case FLOAT_RANGE: {
+      size_t i;
+      for (i = 0; i < module->array_length; i++)
+        free(((struct float_range_data**) module->module_data)[i]);
+    }
     case FLOAT:
-    case FLOAT_RANGE:
       free(module->module_data);
       break;
     };
@@ -176,7 +177,7 @@ size_t print_value(struct module* module, char* buf, size_t buf_size, struct cli
   case FLOAT: {
     size_t i;
     for (i = 0; i < module->array_length; i++) {
-      s += snprintf(s, end - s, "%.*f", client->precision, *((float**) module->module_data)[0]);
+      s += snprintf(s, end - s, "%.*f", client->precision, ((float*) module->module_data)[i]);
       if (i != (module->array_length - 1))
         s += snprintf(s, end - s, ", ");
     }
@@ -212,7 +213,7 @@ size_t update_value(struct module* module, char* buf, size_t buf_size, struct cl
     size_t i;
     for (i = 0; i < module->array_length; i++) {
       float new_value = mod_float(module->context, i);
-      *(((float**) module->module_data)[i]) = new_value;
+      ((float*) module->module_data)[i] = new_value;
     }
     return print_value(module, buf, buf_size, client);
   };
