@@ -34,6 +34,20 @@ char* getName() {
   return "cpu";
 };
 
+char* getItemName(void* context, size_t item) {
+  switch (item) {
+  case USER:
+    return "user";
+  case NICE:
+    return "nice";
+  case SYSTEM:
+    return "system";
+  case IDLE:
+    return "idle";
+  };
+  return NULL;
+};
+
 int count_cpus() {
   FILE* stat = fopen(PROC_STAT, "r");
   if (!stat)

@@ -233,3 +233,18 @@ size_t update_value(struct module* module, char* buf, size_t buf_size, struct cl
   };
   return 0; /* gcc is stupid after all. */
 };
+
+size_t get_module_item_names(struct module* module, char* buf, size_t buf_size) {
+  char *s = buf;
+  char *e = buf + buf_size;
+  mod_item_name* item_name_func = dlsym(module->handle, "getItemName");
+  if (item_name_func) {
+    size_t i;
+    for (i = 0; i < module->array_length; i++) {
+      s += snprintf(s, e - s, "%s", item_name_func(module->context, i));
+      if (i != (module->array_length - 1))
+        s += snprintf(s, e - s, ", ");
+    }
+  }
+  return s - buf;
+};

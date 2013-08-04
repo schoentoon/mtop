@@ -122,6 +122,13 @@ int process_line(struct client* client, char* line, size_t len) {
       if (update_value(module, databuf, sizeof(databuf), client))
         client_send_data(client, "%s: %s", module->name, databuf);
     };
+  } else if (sscanf(line, "ITEMNAMES %64s", buf) == 1) {
+    struct module* module = get_module(buf);
+    if (module) {
+      char databuf[BUFSIZ];
+      if (get_module_item_names(module, databuf, sizeof(databuf)))
+        client_send_data(client, "%s: %s", module->name, databuf);
+    };
   } else if (sscanf(line, "INTERVAL %lf", &double_number) == 1) {
     if (client->timer)
       event_free(client->timer);

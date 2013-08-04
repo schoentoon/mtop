@@ -65,6 +65,7 @@ typedef char* mod_name_function();
 typedef module_type mod_type_function(void* context);
 typedef char** mod_list_aliases();
 typedef unsigned char mod_max_interval(void* context);
+typedef char* mod_item_name(void* context, size_t item);
 
 struct module* new_module(char* filename, char* alias);
 
@@ -75,5 +76,7 @@ struct client;
 size_t update_value(struct module* module, char* buf, size_t buf_size, struct client* client);
 
 size_t print_value(struct module* module, char* buf, size_t buf_size, struct client* client);
+
+size_t get_module_item_names(struct module* module, char* buf, size_t buf_size);
 
 #endif //_MODULE_H
