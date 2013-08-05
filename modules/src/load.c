@@ -28,6 +28,18 @@ char* getName() {
   return "load";
 };
 
+char* getItemName(void* context, size_t item) {
+  switch (item) {
+  case SHORTTERM:
+    return "shortterm";
+  case MIDTERM:
+    return "midterm";
+  case LONGTERM:
+    return "longterm";
+  };
+  return NULL;
+};
+
 module_type getType(void* context) {
   return FLOAT;
 };
