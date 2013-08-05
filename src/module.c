@@ -69,6 +69,13 @@ struct module* new_module(char* filename, char* alias) {
       fprintf(stderr, "WARNING, you seem to have a createContext() function but no freeContext() function, you're possibly leaking memory.\n\t%s\n", dlerror());
   }
   module->type = type(module->context);
+  mod_get_array_length* mod_array_length_func = dlsym(handle, "getArrayLength");
+  if (mod_array_length_func) {
+    module->array_length = mod_array_length_func(module->context);
+    if (!dlsym(module->handle, "getItemName"))
+      fprintf(stderr, "WARNING, you seem to be using an array, but you aren't naming them.\n\t%s\n", dlerror());
+  } else
+    module->array_length = 1;
   switch (module->type) {
   case FLOAT: {
     mod_get_float* mod_float = dlsym(handle, "getFloat");
@@ -77,11 +84,6 @@ struct module* new_module(char* filename, char* alias) {
       free_module(module);
       return NULL;
     }
-    mod_get_array_length* mod_array_length_func = dlsym(handle, "getArrayLength");
-    if (mod_array_length_func)
-      module->array_length = mod_array_length_func(module->context);
-    else
-      module->array_length = 1;
     module->update_function = mod_float;
     module->module_data = calloc(module->array_length, sizeof(float));
     break;
@@ -106,11 +108,6 @@ struct module* new_module(char* filename, char* alias) {
       free_module(module);
       return NULL;
     }
-    mod_get_array_length* mod_array_length_func = dlsym(handle, "getArrayLength");
-    if (mod_array_length_func)
-      module->array_length = mod_array_length_func(module->context);
-    else
-      module->array_length = 1;
     module->module_data = calloc(module->array_length, sizeof(struct float_range_data));
     size_t i;
     for (i = 0; i < module->array_length; i++) {
