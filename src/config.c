@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include <event2/bufferevent.h>
 
@@ -66,6 +68,30 @@ int parse_config(char* config_file) {
               mm = mm->next;
             mm->next = m;
           }
+        }
+      } else if (strcmp(key, "modules") == 0) {
+        struct stat sb;
+        if (stat(value, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+          DIR* dir = opendir(value);
+          struct dirent *dp = NULL;
+          while ((dp = readdir(dir)) != NULL) {
+            char buf[BUFSIZ];
+            if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0
+              && snprintf(buf, sizeof(buf), "%s/%s", value, dp->d_name)) {
+              struct module* m = new_module(buf, NULL);
+              if (m) {
+                if (!config->modules)
+                  config->modules = m;
+                else {
+                  struct module* mm = config->modules;
+                  while (mm->next)
+                    mm = mm->next;
+                  mm->next = m;
+                }
+              }
+            }
+          }
+          closedir(dir);
         }
       }
     } else {
