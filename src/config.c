@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <unistd.h>
 #include <sys/stat.h>
 
 #include <event2/bufferevent.h>
@@ -72,12 +73,15 @@ int parse_config(char* config_file) {
       } else if (strcmp(key, "modules") == 0) {
         struct stat sb;
         if (stat(value, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+          if (value[strlen(value) - 1] == '/')
+            value[strlen(value) - 1] = '\0';
           DIR* dir = opendir(value);
           struct dirent *dp = NULL;
           while ((dp = readdir(dir)) != NULL) {
             char buf[BUFSIZ];
             if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0
-              && snprintf(buf, sizeof(buf), "%s/%s", value, dp->d_name)) {
+              && snprintf(buf, sizeof(buf), "%s/%s", value, dp->d_name)
+              && stat(buf, &sb) == 0 && !S_ISDIR(sb.st_mode) && access(buf, R_OK) == 0) {
               struct module* m = new_module(buf, NULL);
               if (m) {
                 if (!config->modules)
